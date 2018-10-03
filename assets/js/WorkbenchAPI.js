@@ -144,7 +144,7 @@ class WorkbenchAPI {
   }
 
   getTile(wfModuleId, deltaId, tileRow, tileColumn) {
-    return this._fetch(`/api/wfmodules/${wfModuleId}/v${deltaId}/r${tileRow}/c${tileColumn}.json`)
+    return this._fetch(`/api/wfmodules/${wfModuleId}/tiles/v${deltaId}/r${tileRow}/c${tileColumn}.json`)
   }
 
   // All available modules in the system

@@ -270,6 +270,7 @@ export default class TableView extends React.PureComponent {
           setDropdownAction={this.setDropdownAction}
           selectedRowIndexes={selectedRowIndexes}
           onSetSelectedRowIndexes={this.setSelectedRowIndexes}
+          api={this.props.api}
         />
       )
     } else {
@@ -287,6 +288,7 @@ export default class TableView extends React.PureComponent {
           onSetSelectedRowIndexes={() => null}
           onRenameColumn={() => null}
           onReorderColumns={() => null}
+          api={this.props.api}
         />
       )
     }

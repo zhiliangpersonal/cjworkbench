@@ -13,6 +13,7 @@ import ColumnHeader from './ColumnHeader'
 import Row from './Row'
 import RowActionsCell from './RowActionsCell'
 import { typeToCellFormatter } from './CellFormatters'
+import TableSwitcher from './TableSwitcher'
 
 const getRowSelection = memoize((indexes, onRowsSelected, onRowsDeselected) => ({
   enableShiftSelect: true,
@@ -284,41 +285,71 @@ export default class DataGrid extends React.Component {
     this.props.onSetSelectedRowIndexes(selectedRowIndexes)
   }
 
+  loadTile = (wfModuleId, deltaId, tileRow, tileColumn) => {
+    return this.props.api.getTile(wfModuleId, deltaId, tileRow, tileColumn)
+  }
+
   render () {
-    if (!this.props.totalRows) {
-      return null
+    const { wfModuleId, lastRelevantDeltaId, totalRows, columns, columnTypes } = this.props
+
+    const columnObjects = []
+    for (let i = 0; i < (columns || []).length; i++) {
+      columnObjects[i] = {
+        name: columns[i],
+        type: columnTypes ? columnTypes[i] : 'text',
+        width: 100,
+        isSelected: false
+      }
     }
 
-    const { selectedRowIndexes } = this.props
-
-    const draggingProps = {
-      ...this.props,
-      onDragStartColumnIndex: this.onDragStartColumnIndex,
-      onDragEnd: this.onDragEnd,
-      draggingColumnIndex: this.state.draggingColumnIndex,
-      onDropColumnIndexAtIndex: this.onDropColumnIndexAtIndex,
-      onRenameColumn: this.onRename,
-    }
-    const columns = makeFormattedCols(draggingProps)
-    const rowSelection = getRowSelection(selectedRowIndexes, this.onRowsSelected, this.onRowsDeselected)
-
-    return(
-      <ReactDataGridWithThinnerActionsColumn
-        columns={columns}
-        rowActionsCell={RowActionsCell}
-        rowGetter={this.props.getRow}
-        rowsCount={this.props.totalRows}
-        minWidth={this.state.gridWidth - 2}
-        minHeight={this.state.gridHeight - 2}   // -2 because grid has borders, don't want to expand our parent DOM node
-        headerRowHeight={this.props.showLetter ? 68 : 50}
-        enableCellSelect={true}
-        selectAllRenderer={renderNull}
-        onGridRowsUpdated={this.onGridRowsUpdated}
-        enableRowSelect={true}
-        rowRenderer={Row}
-        rowSelection={rowSelection}
-        key={this.state.componentKey}
+    return (
+      <TableSwitcher
+        wfModuleId={wfModuleId}
+        deltaId={lastRelevantDeltaId}
+        nRows={totalRows || 10000}
+        columns={columnObjects}
+        nRowsPerTile={200}
+        nColumnsPerTile={50}
+        loadTile={this.loadTile}
       />
     )
   }
+
+//  render () {
+//    if (!this.props.totalRows) {
+//      return null
+//    }
+//
+//    const { selectedRowIndexes } = this.props
+//
+//    const draggingProps = {
+//      ...this.props,
+//      onDragStartColumnIndex: this.onDragStartColumnIndex,
+//      onDragEnd: this.onDragEnd,
+//      draggingColumnIndex: this.state.draggingColumnIndex,
+//      onDropColumnIndexAtIndex: this.onDropColumnIndexAtIndex,
+//      onRenameColumn: this.onRename,
+//    }
+//    const columns = makeFormattedCols(draggingProps)
+//    const rowSelection = getRowSelection(selectedRowIndexes, this.onRowsSelected, this.onRowsDeselected)
+//
+//    return(
+//      <ReactDataGridWithThinnerActionsColumn
+//        columns={columns}
+//        rowActionsCell={RowActionsCell}
+//        rowGetter={this.props.getRow}
+//        rowsCount={this.props.totalRows}
+//        minWidth={this.state.gridWidth - 2}
+//        minHeight={this.state.gridHeight - 2}   // -2 because grid has borders, don't want to expand our parent DOM node
+//        headerRowHeight={this.props.showLetter ? 68 : 50}
+//        enableCellSelect={true}
+//        selectAllRenderer={renderNull}
+//        onGridRowsUpdated={this.onGridRowsUpdated}
+//        enableRowSelect={true}
+//        rowRenderer={Row}
+//        rowSelection={rowSelection}
+//        key={this.state.componentKey}
+//      />
+//    )
+//  }
 }
