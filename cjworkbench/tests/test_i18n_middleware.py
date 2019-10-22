@@ -46,6 +46,9 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
+    def tearDown(self):
+        deactivate()
+
     def _mock_request(
         self,
         user=None,
@@ -92,25 +95,21 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         # anonymous #4
         request = self._process_request()
         self._assert_anonymous(request, default_locale)
-        deactivate()
 
     def test_anonymous_user_header_only_supported(self):
         # anonymous #3, a simple case: only a supported locale is requested
         request = self._process_request(accept_language_header=non_default_locale)
         self._assert_anonymous(request, non_default_locale)
-        deactivate()
 
     def test_anonymous_user_header_invalid(self):
         # anonymous #3, invalid header
         request = self._process_request(accept_language_header="invalid header content")
         self._assert_anonymous(request, default_locale)
-        deactivate()
 
     def test_anonymous_user_header_nonsupported(self):
         # anonymous #3, only a non-supported locale is requested
         request = self._process_request(accept_language_header=unsupported_locale)
         self._assert_anonymous(request, default_locale)
-        deactivate()
 
     def test_anonymous_user_header_multiple(self):
         # anonymous #3, multiple locales requested, one of them is supported
@@ -119,7 +118,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
             % (unsupported_locale, non_default_locale)
         )
         self._assert_anonymous(request, non_default_locale)
-        deactivate()
 
     def test_anonymous_user_session_supported(self):
         # anonymous #2, supported locale
@@ -127,7 +125,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
             accept_language_header=default_locale, session_locale=non_default_locale
         )
         self._assert_anonymous(request, non_default_locale)
-        deactivate()
 
     def test_anonymous_user_session_unsupported(self):
         # anonymous #2, non-supported locale
@@ -135,7 +132,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
             accept_language_header=non_default_locale, session_locale=unsupported_locale
         )
         self._assert_anonymous(request, non_default_locale)
-        deactivate()
 
     def test_anonymous_user_request_supported(self):
         # anonymous #1, valid locale
@@ -145,13 +141,11 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
             request_locale=non_default_locale,
         )
         self._assert_anonymous(request, non_default_locale)
-        deactivate()
 
     def test_anonymous_user_request_unsupported(self):
         # anonymous #1, invalid locale
         request = self._process_request(request_locale=unsupported_locale)
         self._assert_anonymous(request, default_locale)
-        deactivate()
 
     def test_registered_user_default(self):
         # registered #4
@@ -161,7 +155,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, default_locale, old_preference=unsupported_locale
         )
-        deactivate()
 
     def test_registered_user_no_session(self):
         # registered, session is ignored
@@ -172,7 +165,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, default_locale, old_preference=unsupported_locale
         )
-        deactivate()
 
     def test_registered_user_header_supported(self):
         # registered #3, supported locale
@@ -183,7 +175,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, non_default_locale, old_preference=unsupported_locale
         )
-        deactivate()
 
     def test_registered_user_header_nonsupported(self):
         # registered #3, non-supported locale
@@ -194,7 +185,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, default_locale, old_preference=unsupported_locale
         )
-        deactivate()
 
     def test_registered_user_preferences(self):
         # registered #2
@@ -205,7 +195,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, non_default_locale, old_preference=non_default_locale
         )
-        deactivate()
 
     def test_registered_user_request_supported(self):
         # registered #1, supported locale
@@ -216,7 +205,6 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, default_locale, old_preference=non_default_locale
         )
-        deactivate()
 
     def test_registered_user_request_unsupported(self):
         # registered #1, non-supported locale
@@ -227,4 +215,3 @@ class SetCurrentLocaleMiddlewareTest(SimpleTestCase):
         self._assert_registered(
             request, non_default_locale, old_preference=non_default_locale
         )
-        deactivate()
