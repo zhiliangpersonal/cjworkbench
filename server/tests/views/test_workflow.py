@@ -73,6 +73,7 @@ class WorkflowViewTests(LoggedInTestCase):
             force_authenticate(request, user=user)
         request.session = FakeSession(session_key)
         request.user = user
+        request.locale_id = "en"
 
     def _build_delete(
         self, *args, user: User = None, session_key: str = "a-key", **kwargs
