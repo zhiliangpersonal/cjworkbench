@@ -1,9 +1,13 @@
 id_name: converttexttonumber
-name: Convert to numbers
+name: 
+    en: Convert to numbers
+    el: Μετατροπή σε αριθμό
 category: Clean
 icon: number
 help_url: steps/clean/convert-to-numbers
-description: Convert text to numbers.
+description: 
+    en: Convert text to numbers.
+    el: Μετατροπή κειμένου σε αριθμό.
 parameters_version: 2
 parameters:
 - id_name: colnames
@@ -13,26 +17,34 @@ parameters:
 - id_name: input_locale
   type: menu
   default: us
-  name: Format of numbers to convert
+  name: 
+    en: Format of numbers to convert
+    el: Μορφή των αριθμών
   options:
-  - { value: us, label: 'United States: 1,500.00' }
-  - { value: eu, label: 'Europe: 1.500,00' }
+  - { value: us, label: {en: 'United States: 1,500.00', el: 'ΗΠΑ: 1,500.00'} }
+  - { value: eu, label: {en: 'Europe: 1.500,00', el: 'Ευρώπη: 1.500,00'} }
 - id_name: input_number_type
   type: menu
   default: any
   options:
-  - { value: any, label: Any number }
-  - { value: int, label: Any integer }
-  - { value: float, label: Any decimal }
+  - { value: any, label: {en: Any number, el: Όλοι} }
+  - { value: int, label: {en: Any integer, el: Ακέραιοι} }
+  - { value: float, label: {en: Any decimal, el: Δεκαδικοί} }
 - id_name: extract
   type: checkbox
-  name: Find numbers in text
+  name: 
+    en: Find numbers in text
+    el: Έυρεση αριθμών στο κείμενο
   default: false
 - id_name: error_means_null
-  name: 'Convert non-numbers to null'
+  name:
+    en: 'Convert non-numbers to null'
+    el: 'Μετατροπή μη έγκυρων σε null'
   type: checkbox
   default: true
 - id_name: output_format
   type: numberformat
-  name: Display as
+  name: 
+    en: Display as
+    el: Προβολή ως
   default: '{:,}'

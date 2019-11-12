@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, TypeVar
 from allauth.account.utils import user_display
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
@@ -9,6 +9,7 @@ from cjwstate.models import Workflow, WfModule, ModuleVersion, StoredObject, Tab
 from cjwstate.params import get_migrated_params
 from server.settingsutils import workbench_user_display
 from cjwstate.models.param_spec import ParamSpec
+from cjworkbench.i18n import default_locale
 
 User = get_user_model()
 
@@ -73,18 +74,108 @@ def _camelize_value(v: Any) -> Any:
         return v
 
 
+T = TypeVar("T")
+
+
+def _selectValueFromInternationalizable(
+    internationalizable: Union[T, Dict[str, T]], locale_id: str
+) -> Optional[T]:
+    if isinstance(internationalizable, dict):
+        result = (
+            internationalizable.get(locale_id)
+            or internationalizable.get("default")
+            or internationalizable.get(default_locale)
+        )
+        if result:
+            return result
+        for key in internationalizable:
+            return internationalizable[key]
+        return None
+    return internationalizable
+
+
+class InternationalizableStringField(serializers.ReadOnlyField):
+    def to_representation(self, value):
+        locale_id = self.context.get("locale_id")
+        if not locale_id:
+            raise ValueError("A locale_id is needed to serialize modules")
+        return _selectValueFromInternationalizable(value, locale_id) or ""
+
+
 class StoredObjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = StoredObject
         fields = "__all__"
 
 
+class NestedDeprecatedSerializer(serializers.Serializer):
+    end_date = serializers.CharField()
+    message = InternationalizableStringField()
+
+
 class ModuleSerializer(serializers.ModelSerializer):
     param_fields = serializers.SerializerMethodField()
     help_url = serializers.SerializerMethodField()
+    name = InternationalizableStringField()
+    description = InternationalizableStringField()
+    row_action_menu_entry_title = InternationalizableStringField()
+    deprecated = NestedDeprecatedSerializer()
 
     def _serialize_param(self, p):
         ret = _camelize_dict(p.to_dict())
+        if "name" in ret:
+            ret["name"] = (
+                _selectValueFromInternationalizable(
+                    ret["name"], self.context.get("locale_id")
+                )
+                or ""
+            )
+        if "placeholder" in ret:
+            ret["placeholder"] = (
+                _selectValueFromInternationalizable(
+                    ret["placeholder"], self.context.get("locale_id")
+                )
+                or ""
+            )
+        if ret["type"] == "string" and "default" in ret:
+            ret["default"] = _selectValueFromInternationalizable(
+                ret["default"], self.context.get("locale_id")
+            )
+        if ret["type"] in ["menu", "radio"]:
+            ret["options"] = [
+                option
+                if isinstance(option, str)
+                else {
+                    "value": option["value"],
+                    "label": _selectValueFromInternationalizable(
+                        option["label"], self.context.get("locale_id")
+                    ),
+                }
+                for option in ret["options"]
+            ]
+        if ret["type"] == "secret" and ret["secretLogic"]["provider"] == "string":
+            ret["secretLogic"]["provider"][
+                "label"
+            ] = _selectValueFromInternationalizable(
+                ret["secretLogic"]["provider"]["label"], self.context.get("locale_id")
+            )
+            ret["secretLogic"]["provider"][
+                "help"
+            ] = _selectValueFromInternationalizable(
+                ret["secretLogic"]["provider"]["help"], self.context.get("locale_id")
+            )
+            ret["secretLogic"]["provider"][
+                "helpUrlPrompt"
+            ] = _selectValueFromInternationalizable(
+                ret["secretLogic"]["provider"]["helpUrlPrompt"],
+                self.context.get("locale_id"),
+            )
+            ret["secretLogic"]["provider"][
+                "helpUrl"
+            ] = _selectValueFromInternationalizable(
+                ret["secretLogic"]["provider"]["helpUrl"], self.context.get("locale_id")
+            )
+
         if isinstance(p, ParamSpec.List):
             ret["childDefault"] = p.dtype.inner_dtype.default
 

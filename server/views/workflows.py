@@ -68,7 +68,9 @@ def make_init_state(request, workflow=None, modules=None):
             raise Http404("Workflow was recently deleted")
 
     if modules:
-        modules_data_list = ModuleSerializer(modules, many=True).data
+        modules_data_list = ModuleSerializer(
+            modules, many=True, context={"locale_id": request.locale_id}
+        ).data
         ret["modules"] = dict([(str(m["id_name"]), m) for m in modules_data_list])
 
     if request.user.is_authenticated:

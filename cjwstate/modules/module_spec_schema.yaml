@@ -6,7 +6,7 @@ properties:
         type: string
         description: Name that programmers use to uniquely define this Module
     name:
-        type: string
+        $ref: "#/definitions/internationalizable_string"
         description: Name that appears atop the Step and in Module Search
     category:
         type: string
@@ -22,7 +22,7 @@ properties:
                 format: date
                 description: "Date when the module will stop working."
             message:
-                type: string
+                $ref: "#/definitions/internationalizable_string"
                 description: "Instructions for users to achieve the same functionality."
     icon:
         type: string
@@ -32,7 +32,7 @@ properties:
         description: "URL the code comes from (default: '')"
         format: uri
     description:
-        type: string
+        $ref: "#/definitions/internationalizable_string"
         description: "Description that appears in Module Search (default: '')"
     loads_data:
         type: boolean
@@ -47,7 +47,7 @@ properties:
         type: boolean
         description: "True if the user can zoom in on only this one Step (default: False)"
     row_action_menu_entry_title:
-        type: string
+        $ref: "#/definitions/internationalizable_string"
         description: "If set, text of a selected-rows menu entry that adds this Step"
     help_url:
         type: string
@@ -67,16 +67,31 @@ properties:
             $ref: '#/definitions/param_specs/_toplevel'
 
 definitions:
+    # internationalizable_string: can be one of the following 
+    #    - An object that maps locales to strings.
+    #      When querying the object for a locale it does not specify:
+    #          i) if the object has a "default" key, we take its value
+    #          ii) if the object has a value for the default application locale (i.e. 'en'), we take its value
+    #          iii) otherwise, some other value of the object is taken (no assumption shall be made on which one)
+    #    - A plain string (i.e. same for all locales)
+    internationalizable_string:
+        type: [string, object]
+        properties:
+            default:
+        patternProperties:
+            "[a-z]+":
+                type: string
+        
     # param_specs: Parameter specifications that module author writes, 
     # which in turn define both the UI and the storage format (DType)
     param_specs:
         # _lib: properties that are used in more than one param_type.
         _lib:
             name:
-                type: string
+                $ref: "#/definitions/internationalizable_string"
                 description: "Name that may appears with the form field (only for some types) (default: '')"
             placeholder:
-                type: string
+                $ref: "#/definitions/internationalizable_string"
                 description: "Text that appears when the form field has no value (only for some types) (default: '')"
             column_types:
                 type: array
@@ -116,7 +131,7 @@ definitions:
                 <<: *common_param_spec_properties
                 type: { const: statictext }
                 name:
-                    type: string
+                    $ref: "#/definitions/internationalizable_string"
                     description: Text to display
         string:
             <<: *common_param_spec
@@ -129,7 +144,7 @@ definitions:
                   type: boolean
                   description: "If True, appear as a multiline <textarea>. (default: False)"
                 default:
-                    type: string
+                    $ref: "#/definitions/internationalizable_string"
                     description: "Value to set on the user's behalf (default null)"
         integer:
             <<: *common_param_spec
@@ -184,7 +199,7 @@ definitions:
                                     description: Value the module code uses
                                     pattern: "^[a-z_][a-z0-9_]*$"
                                 label:
-                                    type: string
+                                    $ref: "#/definitions/internationalizable_string"
                                     description: Text the user sees
                 default:
                     type: string
@@ -212,7 +227,7 @@ definitions:
                                   - type: boolean
                                     description: Value the module code uses
                             label:
-                                type: string
+                                $ref: "#/definitions/internationalizable_string"
                                 description: Text the user sees
                 default:
                     oneOf:
@@ -226,7 +241,7 @@ definitions:
                 <<: *common_param_spec_properties
                 type: { const: button }
                 name:
-                    type: string
+                    $ref: "#/definitions/internationalizable_string"
                     description: Button text
         numberformat:
             <<: *common_param_spec
@@ -309,22 +324,22 @@ definitions:
                         properties:
                             provider: { const: string }
                             label:
-                                type: string
+                                $ref: "#/definitions/internationalizable_string"
                                 description: Text above the field
                             pattern:
                                 type: string
                                 description: "Regex (with re2 syntax) the secret value must match"
                             placeholder:
-                                type: string
+                                $ref: "#/definitions/internationalizable_string"
                                 description: Text to show when field is empty
                             help:
-                                type: string
+                                $ref: "#/definitions/internationalizable_string"
                                 description: Instructions for filling the field
                             help_url_prompt:
-                                type: string
+                                $ref: "#/definitions/internationalizable_string"
                                 description: 'Text on link at end of field, e.g. "Take me there"'
                             help_url:
-                                type: string
+                                $ref: "#/definitions/internationalizable_string"
                                 description: 'Link at end of field, e.g. to sign in to service for API key'
         file:
             <<: *common_param_spec

@@ -18,7 +18,7 @@ def import_from_github(request):
 
     try:
         module = import_module_from_github(request.data["url"])
-        data = ModuleSerializer(module).data
+        data = ModuleSerializer(module, context={"locale_id": request.locale_id}).data
         return JsonResponse(data, status=status.HTTP_201_CREATED)
     except (RuntimeError, ValueError, ModuleError) as err:
         # Respond with 200 OK so the client side can read the error message.
