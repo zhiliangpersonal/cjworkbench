@@ -3,11 +3,12 @@ import React from 'react'
 import { act } from 'react-dom/test-utils'
 import ConnectedWfModule, { WfModule } from './WfModule'
 import DataVersionModal from '../DataVersionModal'
-import { shallow, mount } from 'enzyme'
+import { shallow } from 'enzyme'
+import { mountWithI18n, mockStore } from '../../test-utils'
 import deepEqual from 'fast-deep-equal'
 import { createStore } from 'redux'
 import { Provider } from 'react-redux'
-import { mockStore } from '../../test-utils'
+
 import { generateSlug } from '../../utils'
 import lessonSelector from '../../lessons/lessonSelector'
 import StatusLine from './StatusLine'
@@ -344,7 +345,7 @@ describe('WfModule, not read-only mode', () => {
       testHighlight: _ => false
     })
 
-    const w = mount(
+    const w = mountWithI18n(
       <Provider store={store}>
         <ConnectedWfModule
           isReadOnly={false}
@@ -415,7 +416,7 @@ describe('WfModule, not read-only mode', () => {
 
       highlight([])
 
-      wrapper = mount(
+      wrapper = mountWithI18n(
         <Provider store={store}>
           <ConnectedWfModule
             isReadOnly={false}

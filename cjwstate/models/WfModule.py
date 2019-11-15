@@ -270,12 +270,7 @@ class WfModule(models.Model):
         if crr is None:
             return ""
         else:
-            parts = []
-            for err in crr.errors:
-                if err.message.id != "TODO_i18n":
-                    raise RuntimeError("TODO support i18n messages")
-                parts.append(err.message.args["text"])
-            return "\n\n".join(parts)
+            return [err.message.to_dict() for err in crr.errors] or ""
 
     # ---- Authorization ----
     # User can access wf_module if they can access workflow

@@ -1,24 +1,43 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { withI18n } from '@lingui/react'
+
+const singleMessagePropType = PropTypes.oneOfType([PropTypes.string, PropTypes.shape({
+  id: PropTypes.string.isRequired, // message key
+  arguments: PropTypes.oneOfType([PropTypes.array, PropTypes.object]).isRequired
+})])
+
+export const messagePropType = PropTypes.oneOfType([singleMessagePropType, PropTypes.arrayOf(singleMessagePropType)])
+
+function translate (i18n, message) {
+  if (!message || (typeof message) !== 'object') return message
+  if (Array.isArray(message)) {
+    return message
+      .map(m => translate(i18n, m))
+      .filter(m => Boolean(m))
+      .join('\n\n')
+  }
+  if (message.id === 'TODO_i18n') {
+    return message.arguments.text
+  } else {
+    return i18n._(message.id, message.arguments)
+  }
+}
 
 /**
  * Render an I18nMessage, as defined in cjwkernel.types.
  *
  * This renders as text in a React.Fragment
  */
-export default function I18nMessage (props) {
-  // TODO change the implementation. Right now, we assume all I18nMessages
-  // have id "TODO_i18n". But what we _really_ want is for "TODO_i18n" to be
-  // an actual translation key -- i.e., something in the .po files -- that
-  // just returns the `text` argument. Once we've done that, make this use
-  // real i18n.
-  if (props.id === 'TODO_i18n') {
-    return <>{props.arguments.text}</>
-  } else {
-    return <>TODO_i18n: translate {JSON.stringify(props)}</>
-  }
+function I18nMessage ({ i18n, message }) {
+  return <>{translate(i18n, message)}</>
 }
+
 I18nMessage.propTypes = {
-  id: PropTypes.string.isRequired, // message key
-  arguments: PropTypes.object.isRequired
+  message: messagePropType,
+  i18n: PropTypes.shape({
+    // i18n object injected by LinguiJS withI18n()
+    _: PropTypes.func.isRequired
+  }).isRequired
 }
+export default withI18n()(I18nMessage)

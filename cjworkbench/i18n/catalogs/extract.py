@@ -189,7 +189,7 @@ def extract_python(fileobj, keywords, comment_tags, options):
                     translator_comments = []
 
                 ### HERE start our modifications to pybabel's script
-                if funcname in ["trans", "trans_lazy"]:
+                if funcname in ["trans", "trans_lazy", "make_i18nMessage"]:
                     # `messages` will have all the string parameters to our function
                     # As we specify in the documentation of `trans`,
                     # the first will be the message ID, the second will be the default message
@@ -201,7 +201,11 @@ def extract_python(fileobj, keywords, comment_tags, options):
                             (message_lineno, "default-message: " + messages[1])
                         )
 
-                    if len(messages) > 2 and isinstance(messages[2], str):
+                    if (
+                        funcname in ["trans", "trans_lazy"]
+                        and len(messages) > 2
+                        and isinstance(messages[2], str)
+                    ):
                         context = messages[2]
                     else:
                         context = None

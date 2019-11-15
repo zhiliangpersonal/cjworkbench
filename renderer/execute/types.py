@@ -2,10 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import FrozenSet, List, Optional
-from cjwkernel.types import I18nMessage, QuickFix, QuickFixAction
-
-
-TypeNames = {"text": "Text", "number": "Numbers", "datetime": "Dates & Times"}
+from cjwkernel.types import I18nMessage, QuickFix, QuickFixAction, make_i18nMessage
 
 
 class UnneededExecution(Exception):
@@ -78,56 +75,66 @@ class PromptingError(Exception):
                 raise RuntimeError(f"Unhandled wanted_types: {self.wanted_types}")
 
         @property
-        def found_type_name(self):
-            assert not self.should_be_text
-            return TypeNames[self.found_type]
-
-        @property
         def should_be_text(self):
             return self.found_type is None
 
-        @property
-        def best_wanted_type_name(self):
-            return TypeNames[self.best_wanted_type_id]
-
-        def as_error_str(self):
+        def as_error_message(self) -> I18nMessage:
             """Build a message to prompt the user to use a quick fix."""
             # TODO make each quick fix get its own paragraph. (For now, quick
             # fixes are nothing but buttons.)
 
-            names = [f"“{c}”" for c in self.column_names]
-            if len(names) > 3:
-                # "x", "y", "z", "a" => "x", "y", "2 others" (always more than
-                # 1 other -- if there were 1 other, we might as well have
-                # written the name itself)
-                names[2:] = [f"{len(names) - 2} others"]
-            if len(names) == 1:
-                columns_str = f"The column {names[0]}"
-            else:
-                # English-style:
-                # 2: "A" and "B"
-                # 3: "A", "B" and "C"
-                # 4+: "A", "B" and 2 others
-                names_str = ", ".join(names[:-1]) + " and " + names[-1]
-                columns_str = f"The columns {names_str}"
+            icu_args = {
+                "columns": len(self.column_names),
+                **{
+                    str(i): f"“{self.column_names[i]}”"
+                    for i in range(0, len(self.column_names))
+                },
+            }
 
             if self.should_be_text:
                 # Convert to Text
-                return f"{columns_str} must be converted to Text."
+                # i18n: The parameter {columns} will contain the total number of columns that need to be converted; you will also receive the column names as {0}, {1}, {2}, etc.
+                return make_i18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText",
+                    "{ columns, plural, offset:2"
+                    " =1 {The column {0} must be converted to Text.}"
+                    " =2 {The columns {0} and {1} must be converted to Text.}"
+                    " one {The columns {0}, {1} and {2} must be converted to Text.}"
+                    " other {The columns {0}, {1} and # others must be converted to Text.}}",
+                    icu_args,
+                )
             else:
-                return (
-                    f"{columns_str} must be converted "
-                    f"from {self.found_type_name} to {self.best_wanted_type_name}."
+                icu_args["found_type"] = self.found_type
+                icu_args["best_wanted_type"] = self.best_wanted_type_id
+                # i18n: The parameter {columns} will contain the total number of columns that need to be converted; you will also receive the column names: {0}, {1}, {2}, etc. The parameters {found_type} and {best_wanted_type} will have values among "text", "number", "datetime"; however, including a (possibly empty) "other" case is mandatory.
+                return make_i18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
+                    "{ columns, plural, offset:2"
+                    " =1 {The column {0} must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}}.}"
+                    " =2 {The columns {0} and {1} must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times}  other{}}.}"
+                    " one {The columns {0}, {1} and {2} must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.}"
+                    " other {The columns {0}, {1} and # others must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.}}",
+                    icu_args,
                 )
 
         def as_quick_fix(self):
             """Build a QuickFix that would resolve this error."""
             if self.should_be_text:
-                prompt = f"Convert to {self.best_wanted_type_name}"
-            else:
-                prompt = (
-                    f"Convert {self.found_type_name} to {self.best_wanted_type_name}"
+                message = make_i18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.shouldBeText",
+                    "Convert to Text.",
                 )
+            else:
+                # i18n: The parameters {found_type} and {best_wanted_type} will have values among "text", "number", "datetime"; however, including an (possibly empty) "other" case is mandatory.
+                message = make_i18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general",
+                    "Convert { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.",
+                    {
+                        "found_type": self.found_type,
+                        "best_wanted_type": self.best_wanted_type_id,
+                    },
+                )
+
             params = {"colnames": self.column_names}
 
             if "text" in self.wanted_types:
@@ -139,10 +146,7 @@ class PromptingError(Exception):
             else:
                 raise RuntimeError(f"Unhandled wanted_types: {self.wanted_types}")
 
-            return QuickFix(
-                I18nMessage.TODO_i18n(prompt),
-                QuickFixAction.PrependStep(module_id, params),
-            )
+            return QuickFix(message, QuickFixAction.PrependStep(module_id, params))
 
     def __init__(self, errors: List[PromptingError.WrongColumnType]):
         super().__init__("user must change something before we render")
@@ -151,8 +155,8 @@ class PromptingError(Exception):
     def __eq__(self, other):
         return isinstance(other, self.type) and other.errors == self.errors
 
-    def as_error_str(self) -> str:
-        return "\n\n".join(err.as_error_str() for err in self.errors)
+    def as_error_message(self) -> List[I18nMessage]:
+        return [err.as_error_message() for err in self.errors]
 
     def as_quick_fixes(self) -> List[QuickFix]:
         """Build a List of QuickFix: one per error."""

@@ -14,6 +14,7 @@ from cjwkernel.types import (
     RenderError,
     RenderResult,
     Tab,
+    make_i18nMessage,
 )
 from cjwkernel.util import tempfile_context
 from cjwstate import minio, rendercache
@@ -130,10 +131,11 @@ def _wrap_render_errors(render_call):
         return RenderResult(
             errors=[
                 RenderError(
-                    I18nMessage.TODO_i18n(
+                    make_i18nMessage(
+                        "py.renderer.execute.wf_module.wrap_render_errors",
                         "Something unexpected happened. We have been notified and are "
-                        "working to fix it. If this persists, contact us. Error code: "
-                        + format_for_user_debugging(err)
+                        "working to fix it. If this persists, contact us. Error code: {error_code}",
+                        {"error_code": format_for_user_debugging(err)},
                     )
                 )
             ]
@@ -287,21 +289,30 @@ async def _render_wfmodule(
                 tab_results,
             )
         except TabCycleError:
-            return RenderResult.from_deprecated_error(
-                "The chosen tab depends on this one. Please choose another tab."
+            return RenderResult.from_error(
+                make_i18nMessage(
+                    "py.renderer.execute.wf_module._render_module.TabCycleError",
+                    "The chosen tab depends on this one. Please choose another tab.",
+                )
             )
         except TabOutputUnreachableError:
-            return RenderResult.from_deprecated_error(
-                "The chosen tab has no output. Please select another one."
+            return RenderResult.from_error(
+                make_i18nMessage(
+                    "py.renderer.execute.wf_module._render_module.TabOutputUnreachableError",
+                    "The chosen tab has no output. Please select another one.",
+                )
             )
         except PromptingError as err:
-            return RenderResult.from_deprecated_error(
-                err.as_error_str(), quick_fixes=err.as_quick_fixes()
+            return RenderResult.from_error(
+                err.as_error_message(), quick_fixes=err.as_quick_fixes()
             )
 
         if loaded_module is None:
-            return RenderResult.from_deprecated_error(
-                "Please delete this step: an administrator uninstalled its code."
+            return RenderResult.from_error(
+                make_i18nMessage(
+                    "py.renderer.execute.wf_module._render_module.noLoadedModule",
+                    "Please delete this step: an administrator uninstalled its code.",
+                )
             )
 
         # Render may take a while. run_in_executor to push that slowdown to a
@@ -395,9 +406,7 @@ async def execute_wfmodule(
 
 def build_status_dict(result: RenderResult, delta_id: int) -> Dict[str, Any]:
     if result.errors:
-        if result.errors[0].message.id != "TODO_i18n":
-            raise RuntimeError("TODO serialize i18n-ready messages")
-        error = result.errors[0].message.args["text"]
+        error = [error.message.to_dict() for error in result.errors]
         quick_fixes = [qf.to_dict() for qf in result.errors[0].quick_fixes]
     else:
         error = ""

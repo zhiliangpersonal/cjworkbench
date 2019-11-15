@@ -37,7 +37,7 @@ export default class QuickFix extends React.PureComponent {
         className='quick-fix action-button button-orange'
         onClick={this.handleClick}
       >
-        <I18nMessage {...buttonText} />
+        <I18nMessage message={buttonText} />
       </button>
     )
   }

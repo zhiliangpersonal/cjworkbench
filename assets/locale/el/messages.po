@@ -14,11 +14,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.7.0\n"
 
-#: assets/js/i18n/locales.js:7
+#: assets/js/i18n/locales.js:5
 msgid "locales.el"
 msgstr ""
 
-#: assets/js/i18n/locales.js:6
+#: assets/js/i18n/locales.js:4
 msgid "locales.en"
 msgstr ""
 
@@ -50,6 +50,54 @@ msgstr ""
 
 #: cjworkbench/forms/signup.py:32
 msgid "accounts.sign_up.fields.last_name.placeholder"
+msgstr ""
+
+#. i18n: The parameter {columns} will contain the total number of columns that
+#. need to be converted; you will also receive the column names as {0}, {1},
+#. {2}, etc.
+#: renderer/execute/types.py:97
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText"
+msgstr ""
+"{ columns, plural, offset:2     =1 {Η στήλη {0} πρέπει να μετατραπεί σε "
+"Κείμενο.}     =2 {Οι στήλες {0} και {1} πρέπει να μετατραπούν σε "
+"Κείμενο.}    one {Οι στήλες {0}, {1} και {2} πρέπει να μετατραπούν σε "
+"Κείμενο.}  other {Οι στήλες {0}, {1} και # ακόμη πρέπει να μετατραπούν σε"
+" Κείμενο.}}"
+
+#. i18n: The parameter {columns} will contain the total number of columns that
+#. need to be converted; you will also receive the column names: {0}, {1}, {2},
+#. etc. The parameters {found_type} and {best_wanted_type} will have values
+#. among "text", "number", "datetime"; however, including a (possibly empty)
+#. "other" case is mandatory.
+#: renderer/execute/types.py:110
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general"
+msgstr ""
+
+#: renderer/execute/types.py:123
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.shouldBeText"
+msgstr "Μετατροπή σε {best_wanted_type_name}"
+
+#. i18n: The parameters {found_type} and {best_wanted_type} will have values
+#. among "text", "number", "datetime"; however, including an (possibly empty)
+#. "other" case is mandatory.
+#: renderer/execute/types.py:129
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general"
+msgstr ""
+
+#: renderer/execute/wf_module.py:138
+msgid "py.renderer.execute.wf_module.wrap_render_errors"
+msgstr ""
+
+#: renderer/execute/wf_module.py:293
+msgid "py.renderer.execute.wf_module._render_module.TabCycleError"
+msgstr ""
+
+#: renderer/execute/wf_module.py:300
+msgid "py.renderer.execute.wf_module._render_module.TabOutputUnreachableError"
+msgstr ""
+
+#: renderer/execute/wf_module.py:312
+msgid "py.renderer.execute.wf_module._render_module.noLoadedModule"
 msgstr ""
 
 #: templates/account/login.html:4 templates/account/login.html:10

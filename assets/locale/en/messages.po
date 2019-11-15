@@ -14,11 +14,11 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.7.0\n"
 
-#: assets/js/i18n/locales.js:7
+#: assets/js/i18n/locales.js:5
 msgid "locales.el"
 msgstr "Greek"
 
-#: assets/js/i18n/locales.js:6
+#: assets/js/i18n/locales.js:4
 msgid "locales.en"
 msgstr "English"
 
@@ -53,6 +53,72 @@ msgstr "First name"
 #: cjworkbench/forms/signup.py:32
 msgid "accounts.sign_up.fields.last_name.placeholder"
 msgstr "Last name"
+
+#. i18n: The parameter {columns} will contain the total number of columns that
+#. need to be converted; you will also receive the column names as {0}, {1},
+#. {2}, etc.
+#: renderer/execute/types.py:97
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText"
+msgstr ""
+"{ columns, plural, offset:2 =1 {The column {0} must be converted to "
+"Text.} =2 {The columns {0} and {1} must be converted to Text.} one {The "
+"columns {0}, {1} and {2} must be converted to Text.} other {The columns "
+"{0}, {1} and # others must be converted to Text.}}"
+
+#. i18n: The parameter {columns} will contain the total number of columns that
+#. need to be converted; you will also receive the column names: {0}, {1}, {2},
+#. etc. The parameters {found_type} and {best_wanted_type} will have values
+#. among "text", "number", "datetime"; however, including a (possibly empty)
+#. "other" case is mandatory.
+#: renderer/execute/types.py:110
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general"
+msgstr ""
+"{ columns, plural, offset:2 =1 {The column {0} must be converted from { "
+"found_type, select, text {Text} number {Numbers} datetime {Dates & Times}"
+" other {}} to {best_wanted_type, select, text {Text} number {Numbers} "
+"datetime {Dates & Times} other {}}.} =2 {The columns {0} and {1} must be "
+"converted from { found_type, select, text {Text} number {Numbers} "
+"datetime {Dates & Times} other {}} to {best_wanted_type, select, text "
+"{Text} number {Numbers} datetime {Dates & Times}  other{}}.} one {The "
+"columns {0}, {1} and {2} must be converted from { found_type, select, "
+"text {Text} number {Numbers} datetime {Dates & Times} other {}} to "
+"{best_wanted_type, select, text {Text} number {Numbers} datetime {Dates &"
+" Times} other{}}.} other {The columns {0}, {1} and # others must be "
+"converted from { found_type, select, text {Text} number {Numbers} "
+"datetime {Dates & Times} other {}} to {best_wanted_type, select, text "
+"{Text} number {Numbers} datetime {Dates & Times} other{}}.}}"
+
+#: renderer/execute/types.py:123
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.shouldBeText"
+msgstr "Convert to Text."
+
+#. i18n: The parameters {found_type} and {best_wanted_type} will have values
+#. among "text", "number", "datetime"; however, including an (possibly empty)
+#. "other" case is mandatory.
+#: renderer/execute/types.py:129
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general"
+msgstr ""
+"Convert { found_type, select, text {Text} number {Numbers} datetime "
+"{Dates & Times} other {}} to {best_wanted_type, select, text {Text} "
+"number {Numbers} datetime {Dates & Times} other{}}."
+
+#: renderer/execute/wf_module.py:138
+msgid "py.renderer.execute.wf_module.wrap_render_errors"
+msgstr ""
+"Something unexpected happened. We have been notified and are working to "
+"fix it. If this persists, contact us. Error code: {error_code}"
+
+#: renderer/execute/wf_module.py:293
+msgid "py.renderer.execute.wf_module._render_module.TabCycleError"
+msgstr "The chosen tab depends on this one. Please choose another tab."
+
+#: renderer/execute/wf_module.py:300
+msgid "py.renderer.execute.wf_module._render_module.TabOutputUnreachableError"
+msgstr "The chosen tab has no output. Please select another one."
+
+#: renderer/execute/wf_module.py:312
+msgid "py.renderer.execute.wf_module._render_module.noLoadedModule"
+msgstr "Please delete this step: an administrator uninstalled its code."
 
 #: templates/account/login.html:4 templates/account/login.html:10
 #: templates/account/signup.html:12

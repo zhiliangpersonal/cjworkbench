@@ -554,6 +554,18 @@ class I18nMessage:
         return {"id": self.id, "arguments": self.args}
 
 
+def make_i18nMessage(
+    message_id: str, default_message: str, args: Dict[str, Union[int, float, str]] = {}
+) -> I18nMessage:
+    """Mark a message for translation.
+    
+    The `default_message`, which can be an arbitrary ICU message, 
+    will be ignored on runtime, 
+    but will be added to the message catalog of the default locale when parsing the code.
+    """
+    return I18nMessage(message_id, args)
+
+
 ParamValue = Optional[
     Union[
         str,
@@ -861,14 +873,20 @@ class RenderResult:
         )
 
     @classmethod
-    def from_deprecated_error(
-        cls, message: str, *, quick_fixes: List[QuickFix] = []
-    ) -> RenderError:
-        return cls(
-            errors=[
-                RenderError(I18nMessage("TODO_i18n", {"text": message}), quick_fixes)
-            ]
-        )
+    def from_error(
+        cls,
+        messages: Union[I18nMessage, List[I18nMessage]],
+        *,
+        quick_fixes: List[QuickFix] = [],
+    ) -> RenderResult:
+        messages = [messages] if isinstance(messages, I18nMessage) else messages
+        assert len(messages) > 0
+        first_message = messages.pop(0)
+        errors = [
+            RenderError(first_message, quick_fixes),
+            *[RenderError(message) for message in messages],
+        ]
+        return cls(errors=errors)
 
     def to_thrift(self) -> ttypes.RenderResult:
         return ttypes.RenderResult(

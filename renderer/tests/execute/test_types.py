@@ -18,13 +18,19 @@ class PromptingErrorTest(unittest.TestCase):
             quick_fixes_result,
             [
                 QuickFix(
-                    I18nMessage.TODO_i18n("Convert Text to Numbers"),
+                    I18nMessage(
+                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general",
+                        {"found_type": "text", "best_wanted_type": "number"},
+                    ),
                     QuickFixAction.PrependStep(
                         "converttexttonumber", {"colnames": ["A"]}
                     ),
                 ),
                 QuickFix(
-                    I18nMessage.TODO_i18n("Convert Dates & Times to Numbers"),
+                    I18nMessage(
+                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general",
+                        {"found_type": "datetime", "best_wanted_type": "number"},
+                    ),
                     QuickFixAction.PrependStep(
                         "converttexttonumber", {"colnames": ["B", "C"]}
                     ),
@@ -32,13 +38,30 @@ class PromptingErrorTest(unittest.TestCase):
             ],
         )
 
-        error_result = err.as_error_str()
+        error_result = err.as_error_message()
         self.assertEqual(
             error_result,
-            (
-                "The column “A” must be converted from Text to Numbers.\n\n"
-                "The columns “B” and “C” must be converted from Dates & Times to Numbers."
-            ),
+            [
+                I18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
+                    {
+                        "columns": 1,
+                        "0": "“A”",
+                        "found_type": "text",
+                        "best_wanted_type": "number",
+                    },
+                ),
+                I18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
+                    {
+                        "columns": 2,
+                        "0": "“B”",
+                        "1": "“C”",
+                        "found_type": "datetime",
+                        "best_wanted_type": "number",
+                    },
+                ),
+            ],
         )
 
     def test_quick_fixes_convert_to_text(self):
@@ -50,7 +73,9 @@ class PromptingErrorTest(unittest.TestCase):
             quick_fixes_result,
             [
                 QuickFix(
-                    I18nMessage.TODO_i18n("Convert to Text"),
+                    I18nMessage(
+                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.shouldBeText"
+                    ),
                     QuickFixAction.PrependStep(
                         "converttotext", {"colnames": ["A", "B"]}
                     ),
@@ -58,7 +83,13 @@ class PromptingErrorTest(unittest.TestCase):
             ],
         )
 
-        error_result = err.as_error_str()
+        error_result = err.as_error_message()
         self.assertEqual(
-            error_result, "The columns “A” and “B” must be converted to Text."
+            error_result,
+            [
+                I18nMessage(
+                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText",
+                    {"columns": 2, "0": "“A”", "1": "“B”"},
+                )
+            ],
         )

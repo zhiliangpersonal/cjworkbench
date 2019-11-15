@@ -1,11 +1,11 @@
 /* globals describe, expect, it, jest */
 import React from 'react'
 import StatusLine from './StatusLine'
-import { mount } from 'enzyme'
+import { mountWithI18n } from '../../test-utils'
 
 describe('Status line', () => {
   const wrapper = (extraProps = {}) => {
-    return mount(
+    return mountWithI18n(
       <StatusLine
         isReadOnly={false}
         module={{ help_url: 'modules/foo' }}
