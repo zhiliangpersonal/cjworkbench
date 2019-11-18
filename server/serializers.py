@@ -448,6 +448,7 @@ class LessonSerializer(serializers.BaseSerializer):
         return {
             "course": self._course_to_representation(obj.course),
             "slug": obj.slug,
+            "localeId": obj.locale_id,
             "header": {"title": obj.header.title, "html": obj.header.html},
             "sections": list(
                 self._section_to_representation(section) for section in obj.sections
@@ -463,7 +464,7 @@ class LessonSerializer(serializers.BaseSerializer):
         if obj is None:
             return None
         else:
-            return {"slug": obj.slug, "title": obj.title}
+            return {"slug": obj.slug, "title": obj.title, "localeId": obj.locale_id}
 
     def _section_to_representation(self, obj):
         return {

@@ -1,9 +1,9 @@
-from contextlib import contextmanager
+import contextlib
 import logging
-from pathlib import Path
 from unittest.mock import Mock, patch
 from django.utils import timezone
 import pyarrow
+from cjwkernel.chroot import EDITABLE_CHROOT
 from cjwkernel.errors import ModuleExitedError
 from cjwkernel.types import I18nMessage, RenderError, RenderResult, Tab
 from cjwkernel.tests.util import (
@@ -26,6 +26,31 @@ async def noop(*args, **kwargs):
 
 
 class WfModuleTests(DbTestCase):
+    def setUp(self):
+        super().setUp()
+        self.ctx = contextlib.ExitStack()
+        self.chroot_context = self.ctx.enter_context(EDITABLE_CHROOT.acquire_context())
+        basedir = self.ctx.enter_context(
+            self.chroot_context.tempdir_context(prefix="test_wf_module-")
+        )
+        self.output_path = self.ctx.enter_context(
+            self.chroot_context.tempfile_context(prefix="output-", dir=basedir)
+        )
+
+    def tearDown(self):
+        self.ctx.close()
+        super().tearDown()
+
+    @contextlib.contextmanager
+    def _stub_module(self, render_fn):
+        mock_module = Mock(LoadedModule)
+        mock_module.render.side_effect = render_fn
+        ModuleVersion.create_or_replace_from_spec(
+            {"id_name": "x", "name": "X", "category": "Clean", "parameters": []}
+        )
+        with patch.object(LoadedModule, "for_module_version", lambda *a: mock_module):
+            yield
+
     @patch("server.websockets.ws_client_send_delta_async", noop)
     def test_deleted_module(self):
         workflow = Workflow.create_and_init()
@@ -38,13 +63,14 @@ class WfModuleTests(DbTestCase):
         )
         result = self.run_with_async_db(
             execute_wfmodule(
+                self.chroot_context,
                 workflow,
                 wf_module,
                 {},
                 tab.to_arrow(),
                 RenderResult(),
                 {},
-                Path("/unused"),
+                self.output_path,
             )
         )
         expected = RenderResult(
@@ -60,16 +86,6 @@ class WfModuleTests(DbTestCase):
         self.assertEqual(result, expected)
         wf_module.refresh_from_db()
         self.assertEqual(wf_module.cached_render_result.errors, expected.errors)
-
-    @contextmanager
-    def _stub_module(self, render_fn):
-        mock_module = Mock(LoadedModule)
-        mock_module.render.side_effect = render_fn
-        ModuleVersion.create_or_replace_from_spec(
-            {"id_name": "x", "name": "X", "category": "Clean", "parameters": []}
-        )
-        with patch.object(LoadedModule, "for_module_version", lambda *a: mock_module):
-            yield
 
     @patch("server.websockets.ws_client_send_delta_async", noop)
     @patch.object(notifications, "email_output_delta")
@@ -100,13 +116,14 @@ class WfModuleTests(DbTestCase):
             with self._stub_module(render):
                 self.run_with_async_db(
                     execute_wfmodule(
+                        self.chroot_context,
                         workflow,
                         wf_module,
                         {},
                         Tab(tab.slug, tab.name),
                         RenderResult(),
                         {},
-                        Path("/unused"),
+                        self.output_path,
                     )
                 )
 
@@ -153,13 +170,14 @@ class WfModuleTests(DbTestCase):
                 with self.assertLogs(level=logging.ERROR):
                     self.run_with_async_db(
                         execute_wfmodule(
+                            self.chroot_context,
                             workflow,
                             wf_module,
                             {},
                             Tab(tab.slug, tab.name),
                             RenderResult(),
                             {},
-                            Path("/unused"),
+                            self.output_path,
                         )
                     )
 
@@ -194,13 +212,14 @@ class WfModuleTests(DbTestCase):
         with self._stub_module(render):
             self.run_with_async_db(
                 execute_wfmodule(
+                    self.chroot_context,
                     workflow,
                     wf_module,
                     {},
                     Tab(tab.slug, tab.name),
                     RenderResult(),
                     {},
-                    Path("/unused"),
+                    self.output_path,
                 )
             )
 
@@ -228,13 +247,14 @@ class WfModuleTests(DbTestCase):
         with self._stub_module(render):
             self.run_with_async_db(
                 execute_wfmodule(
+                    self.chroot_context,
                     workflow,
                     wf_module,
                     {},
                     Tab(tab.slug, tab.name),
                     RenderResult(),
                     {},
-                    Path("/unused"),
+                    self.output_path,
                 )
             )
 
@@ -259,13 +279,14 @@ class WfModuleTests(DbTestCase):
         with self._stub_module(render):
             self.run_with_async_db(
                 execute_wfmodule(
+                    self.chroot_context,
                     workflow,
                     wf_module,
                     {},
                     Tab(tab.slug, tab.name),
                     RenderResult(),
                     {},
-                    Path("/unused"),
+                    self.output_path,
                 )
             )
 
@@ -287,13 +308,14 @@ class WfModuleTests(DbTestCase):
         with self._stub_module(render):
             self.run_with_async_db(
                 execute_wfmodule(
+                    self.chroot_context,
                     workflow,
                     wf_module,
                     {},
                     Tab(tab.slug, tab.name),
                     RenderResult(),
                     {},
-                    Path("/unused"),
+                    self.output_path,
                 )
             )
 
@@ -323,13 +345,14 @@ class WfModuleTests(DbTestCase):
         with self._stub_module(render):
             self.run_with_async_db(
                 execute_wfmodule(
+                    self.chroot_context,
                     workflow,
                     wf_module,
                     {},
                     Tab(tab.slug, tab.name),
                     RenderResult(),
                     {},
-                    Path("/unused"),
+                    self.output_path,
                 )
             )
 
@@ -350,13 +373,14 @@ class WfModuleTests(DbTestCase):
         with self._stub_module(render):
             result = self.run_with_async_db(
                 execute_wfmodule(
+                    self.chroot_context,
                     workflow,
                     wf_module,
                     {},
                     Tab(tab.slug, tab.name),
                     RenderResult(),
                     {},
-                    Path("/unused"),
+                    self.output_path,
                 )
             )
         self.assertEqual(

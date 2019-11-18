@@ -3,34 +3,39 @@ import os
 import tempfile
 from pathlib import Path
 import shutil
+import socket
 import stat
 from textwrap import dedent
 from typing import Any, ContextManager, FrozenSet, List, Optional, Tuple
 import unittest
+from cjwkernel.chroot import EDITABLE_CHROOT
 from cjwkernel import forkserver
-from cjwkernel.util import tempdir_context, tempfile_context
+from cjwkernel.forkserver import protocol
+from cjwkernel.util import tempfile_context
 
 
-def module_main(indented_code: str) -> None:
+def child_main(indented_code: str) -> None:
     code = dedent(indented_code)
-    code_obj = compile(code, "<module string>", "exec", dont_inherit=True, optimize=0)
+    code_obj = compile(
+        code, "<child_main string>", "exec", dont_inherit=True, optimize=0
+    )
     # Exec in global scope, so imports go to globals, not locals
     exec(code_obj, globals(), globals())
 
 
 @contextlib.contextmanager
-def _spawned_module_context(
+def _spawned_child_context(
     server: forkserver.Forkserver,
     args: List[Any] = [],
     chroot_dir: Optional[Path] = None,
-    chroot_provide_paths: List[Tuple[Path, Path]] = [],
+    network_config: Optional[protocol.NetworkConfig] = None,
     skip_sandbox_except: FrozenSet[str] = frozenset(),
-) -> ContextManager[forkserver.ModuleProcess]:
-    subprocess = server.spawn_module(
+) -> ContextManager[forkserver.ChildProcess]:
+    subprocess = server.spawn_child(
         "forkserver-test",
         args,
         chroot_dir=chroot_dir,
-        chroot_provide_paths=chroot_provide_paths,
+        network_config=network_config,
         skip_sandbox_except=skip_sandbox_except,
     )
     try:
@@ -58,7 +63,8 @@ class ForkserverTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls._forkserver = forkserver.Forkserver(
-            module_main="cjwkernel.tests.forkserver.test_init.module_main"
+            child_main="cjwkernel.tests.forkserver.test_init.child_main",
+            environment={"LC_CTYPE": "C.UTF-8", "TEST_ENV": "yes"},
         )
 
     @classmethod
@@ -78,8 +84,9 @@ class ForkserverTest(unittest.TestCase):
     def _spawn_and_communicate(
         self,
         indented_code: str,
+        stdin: bytes = b"",
         chroot_dir: Optional[Path] = None,
-        chroot_provide_paths: List[Tuple[Path, Path]] = [],
+        network_config: Optional[protocol.NetworkConfig] = None,
         skip_sandbox_except: FrozenSet[str] = frozenset(),
     ) -> Tuple[int, bytes, bytes]:
         """
@@ -87,13 +94,15 @@ class ForkserverTest(unittest.TestCase):
 
         This will never error.
         """
-        with _spawned_module_context(
+        with _spawned_child_context(
             self._forkserver,
             args=[indented_code],
             chroot_dir=chroot_dir,
-            chroot_provide_paths=chroot_provide_paths,
+            network_config=network_config,
             skip_sandbox_except=skip_sandbox_except,
         ) as subprocess:
+            subprocess.stdin.write(stdin)
+            subprocess.stdin.close()
             stdout = subprocess.stdout.read()
             stderr = subprocess.stderr.read()
             _, status = subprocess.wait(0)
@@ -109,7 +118,7 @@ class ForkserverTest(unittest.TestCase):
         self,
         indented_code: str,
         chroot_dir: Optional[Path] = None,
-        chroot_provide_paths: List[Tuple[Path, Path]] = [],
+        network_config: Optional[protocol.NetworkConfig] = None,
         skip_sandbox_except: FrozenSet[str] = frozenset(),
     ) -> None:
         """
@@ -118,10 +127,10 @@ class ForkserverTest(unittest.TestCase):
         exitcode, stdout, stderr = self._spawn_and_communicate(
             indented_code,
             chroot_dir=chroot_dir,
-            chroot_provide_paths=chroot_provide_paths,
+            network_config=network_config,
             skip_sandbox_except=skip_sandbox_except,
         )
-        self.assertEqual(exitcode, 0, "Exit code %d: %s" % (exitcode, stderr))
+        self.assertEqual(exitcode, 0, "Exit code %d: %r" % (exitcode, stderr))
         self.assertEqual(stderr, b"", "Unexpected stderr: %r" % stderr)
         self.assertEqual(stdout, b"", "Unexpected stdout: %r" % stdout)
 
@@ -148,26 +157,37 @@ class ForkserverTest(unittest.TestCase):
         self.assertEqual(stdout, b"")
         self.assertRegex(stderr, b"ModuleNotFoundError")
 
-    def test_SECURITY_wipe_env(self):
+    def test_stdin(self):
+        exitcode, stdout, stderr = self._spawn_and_communicate(
+            r"""
+            import sys
+            sys.stdout.write(sys.stdin.read())
+            """,
+            stdin=b"hello",
+        )
+        self.assertEqual(stderr, b"")
+        self.assertEqual(stdout, b"hello")
+        self.assertEqual(exitcode, 0)
+
+    def test_SECURITY_use_environment(self):
         self._spawn_and_communicate_or_raise(
             r"""
             import os
             env = dict(os.environ)
             assert env == {
-                "LANG": "C.UTF-8",
-                "HOME": "/",
-                "OPENBLAS_NUM_THREADS": "1",
+                "LC_CTYPE": "C.UTF-8",
+                "TEST_ENV": "yes",
             }, "Got wrong os.environ: %r" % env
             """
         )
 
-    def test_SECURITY_sock_and_stdin_and_other_fds_are_closed(self):
+    def test_SECURITY_sock_and_any_other_fds_are_closed(self):
         # The user cannot access pipes or files outside its sandbox (aside from
         # stdout+stderr, which the parent process knows are untrusted).
         self._spawn_and_communicate_or_raise(
             r"""
             import os
-            for badfd in [0] + list(range(3, 20)):
+            for badfd in list(range(3, 20)):
                 try:
                     os.write(badfd, b"x")
                     raise RuntimeError("fd %d is unexpectedly open" % badfd)
@@ -175,6 +195,93 @@ class ForkserverTest(unittest.TestCase):
                     assert err.args[0] == 9  # Bad file descriptor
             """
         )
+
+    def test_SECURITY_parent_ip_is_off_limits(self):
+        # The module cannot access a service on its host
+        hostname = socket.gethostname()
+        host_ip = socket.gethostbyname(hostname)
+        port = 19999  # arbitrary
+
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind((host_ip, port))
+            s.listen(1)
+
+            self._spawn_and_communicate_or_raise(
+                r"""
+                import errno
+                import socket
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                        s.connect((%r, %r))
+                        assert False, "connect() should have failed"
+                except OSError as err:
+                    assert err.errno == errno.ECONNREFUSED
+                """
+                % (host_ip, port),
+                network_config=protocol.NetworkConfig(),
+            )
+
+    def test_SECURITY_private_network_is_off_limits(self):
+        # The module cannot access a service on the private network.
+        # Try to connect to Postgres -- we know it's there.
+        postgres_name = os.getenv("CJW_DB_HOST")
+        postgres_ip = socket.gethostbyname(postgres_name)
+        port = 5432
+
+        self._spawn_and_communicate_or_raise(
+            r"""
+            import errno
+            import socket
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.connect((%r, %r))
+                    assert False, "connect() should have failed"
+            except OSError as err:
+                assert err.errno == errno.ECONNREFUSED
+            """
+            % (postgres_ip, port),
+            network_config=protocol.NetworkConfig(),
+        )
+
+    def test_SECURITY_network_none_means_no_networking(self):
+        self._spawn_and_communicate_or_raise(
+            r"""
+            import errno
+            import socket
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.connect(("1.1.1.1", 53))
+                    assert False, "Connect should not work when network disabled"
+                except OSError as err:
+                    assert err.errno == errno.ENETUNREACH
+            """,
+            network_config=None,
+        )
+
+    # TODO enable external-network tests under some sort of tag.
+    # (External-network tests can fail for reasons outside our control.)
+    # In the meantime: if you're going to fiddle with iptables, remember to
+    # uncomment these tests during development.
+    # def test_network_external_dns(self):
+    #     self._spawn_and_communicate_or_raise(
+    #         r"""
+    #         import socket
+    #         socket.gethostbyname("example.com")  # don't crash
+    #         """,
+    #         chroot_dir=READONLY_CHROOT.root,  # for /etc/resolv.conf et al
+    #         network_config=protocol.NetworkConfig(),
+    #     )
+    #
+    # def test_network_external_ip(self):
+    #     self._spawn_and_communicate_or_raise(
+    #         r"""
+    #         import socket
+    #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    #             s.settimeout(5)  # in case the test fails, fail fast
+    #             s.connect(("1.1.1.1", 53))  # don't crash or timeout
+    #         """,
+    #         network_config=protocol.NetworkConfig(),
+    #     )
 
     def test_SECURITY_no_capabilities(self):
         # Even if the user becomes root, the Linux "capabilities" system
@@ -196,7 +303,7 @@ class ForkserverTest(unittest.TestCase):
             # Test we can't actually *use* a capability -- chroot, for example
 
             try:
-                os.chroot("/lib")  # raise on error
+                os.chroot("/")  # raise on error
                 assert False, "chroot worked after dropping capabilities?"
             except PermissionError:
                 pass
@@ -240,17 +347,26 @@ class ForkserverTest(unittest.TestCase):
             skip_sandbox_except=frozenset(["chroot"]),
         )
 
-    def test_chroot_tempdirs(self):
-        self._spawn_and_communicate_or_raise(
-            r"""
-            import tempfile
+    def test_chroot_tempfiles(self):
+        with EDITABLE_CHROOT.acquire_context() as chroot_context:
+            exitcode, stdout, stderr = self._spawn_and_communicate(
+                r"""
+                import tempfile
 
-            tempfile.NamedTemporaryFile(dir="/tmp")  # do not crash
-            tempfile.NamedTemporaryFile(dir="/var/tmp")  # do not crash
-            """,
-            chroot_dir=self.chroot_dir,
-            skip_sandbox_except=frozenset(["chroot"]),
-        )
+                print(tempfile.mkstemp(dir="/tmp")[1])  # do not crash
+                print(tempfile.mkstemp(dir="/var/tmp")[1])  # do not crash
+                """,
+                chroot_dir=chroot_context.chroot.root,
+            )
+            self.assertEqual(exitcode, 0, "Exit code %d: %r" % (exitcode, stderr))
+            self.assertEqual(stderr, b"", "Unexpected stderr: %r" % stderr)
+            tmp1, tmp2, _ = stdout.decode("ascii").split("\n")
+            self.assertTrue(Path(chroot_context.chroot.root / tmp1[1:]).exists())
+            self.assertTrue(Path(chroot_context.chroot.root / tmp2[1:]).exists())
+        # a bit of an integration test: test that after we release the chroot,
+        # the temporary files are gone.
+        self.assertFalse(Path(chroot_context.chroot.root / tmp1).exists())
+        self.assertFalse(Path(chroot_context.chroot.root / tmp2).exists())
 
     def test_SECURITY_chroot_ensures_cwd_is_under_root(self):
         self._spawn_and_communicate_or_raise(
@@ -263,59 +379,38 @@ class ForkserverTest(unittest.TestCase):
             skip_sandbox_except=frozenset(["chroot"]),
         )
 
-    def test_SECURITY_provide_dir_readable(self):
-        with tempdir_context() as files:
-            files.chmod(0o755)
-            (files / "foo.txt").write_text("foo")
-            (files / "subdir").mkdir(0o755)
-            (files / "subdir" / "bar.bin").write_bytes(b"subbar")
-
-            self._spawn_and_communicate_or_raise(
-                r"""
-                from pathlib import Path
-
-                assert Path("/data/foo.txt").read_text() == "foo"
-                assert Path("/data/subdir/bar.bin").read_text() == "subbar"
-                """,
-                chroot_dir=self.chroot_dir,
-                chroot_provide_paths=[(Path("/data"), files)],
-            )
-
-    def test_SECURITY_can_exec_statically_linked_program(self):
-        # Write /data.parquet within the subprocess itself. We can't use
-        # `chroot_provide_paths` here because on dev machines, /app is a
-        # volume mount while `root` is in the container image; os.link()
-        # won't cross filesystems.
-        parquet_bytes = (
-            Path(__file__).parent.parent / "test_data" / "trivial.parquet"
-        ).read_bytes()
-        self.chroot_dir.chmod(0o777)  # let module write file to /
+    def test_SECURITY_can_exec_binaries_in_chroot(self):
+        usr_bin = self.chroot_dir / "usr" / "bin"
+        usr_bin.mkdir(parents=True)
+        shutil.copy2(
+            "/usr/bin/parquet-to-text-stream", usr_bin / "parquet-to-text-stream"
+        )
+        shutil.copy2(
+            Path(__file__).parent.parent / "test_data" / "trivial.parquet",
+            self.chroot_dir / "data.parquet",
+        )
 
         self._spawn_and_communicate_or_raise(
             r"""
-            from pathlib import Path
             import subprocess
-            Path("/data.parquet").write_bytes(%r)
             result = subprocess.run(
                 ["/usr/bin/parquet-to-text-stream", "/data.parquet", "csv"],
                 capture_output=True,
             )
-            assert result.stderr == b"", "program errored %%r" %% result.stderr
-            assert result.stdout == b"A\n1\n2", "program output %%r" %% result.stdout
-            assert result.returncode == 0, "program exited with status code %%d" %% result.returncode
-            """
-            % parquet_bytes,
+            assert result.stderr == b"", "program errored %r" % result.stderr
+            assert result.stdout == b"A\n1\n2", "program output %r" % result.stdout
+            assert result.returncode == 0, "program exited with status code %d" % result.returncode
+            """,
             chroot_dir=self.chroot_dir,
-            chroot_provide_paths=[
-                (
-                    Path("/usr/bin/parquet-to-text-stream"),
-                    Path("/usr/bin/parquet-to-text-stream"),
-                )
-            ],
         )
 
     def test_SECURITY_setuid(self):
-        # The user is not root
+        # The user is cannot setuid(0) because UID 1000 has no capabilities
+        #
+        # This tests setuid and drop_capabilities sandbox features. See also
+        # test_SECURITY_seccomp(), which overrides this one. (On production,
+        # seccomp will kill -31 the process; the kernel will never get a chance
+        # to set EPERM.)
         self._spawn_and_communicate_or_raise(
             r"""
             import os
@@ -332,6 +427,22 @@ class ForkserverTest(unittest.TestCase):
             chroot_dir=self.chroot_dir,
             skip_sandbox_except=frozenset(["setuid", "drop_capabilities"]),
         )
+
+    def test_SECURITY_seccomp(self):
+        # The user cannot call forbidden syscalls.
+        #
+        # We test setuid() because it's an obvious one. See also
+        # test_SECURITY_setuid(), which tests that seccomp is not the only
+        # thing protecting us from setuid.
+        exitcode, stdout, stderr = self._spawn_and_communicate(
+            r"""
+            import os
+            os.setuid(2)
+            """,
+            chroot_dir=self.chroot_dir,
+            skip_sandbox_except=frozenset(["seccomp", "no_new_privs"]),
+        )
+        self.assertEqual(exitcode, -31)
 
     def test_SECURITY_no_new_privs(self):
         # The user cannot use a setuid program to become root

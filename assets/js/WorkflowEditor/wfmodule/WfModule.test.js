@@ -3,8 +3,8 @@ import React from 'react'
 import { act } from 'react-dom/test-utils'
 import ConnectedWfModule, { WfModule } from './WfModule'
 import DataVersionModal from '../DataVersionModal'
-import { shallow } from 'enzyme'
-import { mountWithI18n, mockStore } from '../../test-utils'
+import { mockStore } from '../../test-utils'
+import { shallowWithI18n, mountWithI18n } from '../../i18n/test-utils'
 import deepEqual from 'fast-deep-equal'
 import { createStore } from 'redux'
 import { Provider } from 'react-redux'
@@ -66,7 +66,7 @@ describe('WfModule, not read-only mode', () => {
   }
 
   const wrapper = (extraProps = {}) => {
-    return shallow(
+    return shallowWithI18n(
       <WfModule
         isReadOnly={false}
         isAnonymous={false}

@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from cjworkbench.sync import database_sync_to_async
+from cjwkernel.chroot import ChrootContext
 from cjwkernel.errors import ModuleError, format_for_user_debugging
 from cjwkernel.types import (
     ArrowTable,
@@ -257,6 +258,7 @@ def _execute_wfmodule_save(
 
 
 async def _render_wfmodule(
+    chroot_context: ChrootContext,
     workflow: Workflow,
     wf_module: WfModule,
     raw_params: Dict[str, Any],
@@ -323,6 +325,7 @@ async def _render_wfmodule(
             _wrap_render_errors,
             partial(
                 loaded_module.render,
+                chroot_context=chroot_context,
                 basedir=basedir,
                 input_table=input_result.table,
                 params=params,
@@ -334,6 +337,7 @@ async def _render_wfmodule(
 
 
 async def execute_wfmodule(
+    chroot_context: ChrootContext,
     workflow: Workflow,
     wf_module: WfModule,
     params: Dict[str, Any],
@@ -375,7 +379,14 @@ async def execute_wfmodule(
 
     # may raise UnneededExecution
     result = await _render_wfmodule(
-        workflow, wf_module, params, tab, input_result, tab_results, output_path
+        chroot_context,
+        workflow,
+        wf_module,
+        params,
+        tab,
+        input_result,
+        tab_results,
+        output_path,
     )
 
     # may raise UnneededExecution

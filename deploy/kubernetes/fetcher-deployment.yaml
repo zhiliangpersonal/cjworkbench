@@ -13,6 +13,24 @@ spec:
       labels:
         app: fetcher-app
     spec:
+      initContainers:
+        # setup-sandboxes.sh needs special privileges; run it in an init container.
+        #
+        # We run this command separately because it runs with privileged: true.
+        # (forkserver shouldn't have permission to fiddle with the mount
+        # namespace, lest malicious code use that permission to somehow escape
+        # its sandbox.)
+        #
+        # See https://itnext.io/using-overlay-mounts-with-kubernetes-960375c05959
+        - name: setup-sandboxes
+          image: "gcr.io/cj-workbench/migrate:latest"
+          securityContext:
+            privileged: true  # so it can run mount and iptables
+          command: [ "bash", "-x", "/app/cjwkernel/setup-sandboxes.sh", "all" ]
+          volumeMounts:
+            - mountPath: /var/lib/cjwkernel/chroot
+              name: chroot
+              mountPropagation: Bidirectional  # expose mounts to main app
       containers:
         - name: fetcher
           image: "gcr.io/cj-workbench/fetcher:latest"
@@ -55,8 +73,6 @@ spec:
               value: secrets/google-oauth-secret/google-oauth-secret.json
             - name: CJW_INTERCOM_CLIENT_SECRETS
               value: secrets/intercom-oauth-secret/intercom-oauth-secret.json
-            - name: CJW_SOCIALACCOUNT_SECRETS
-              value: secrets/socialaccount-secrets/socialaccount-secrets.json
             - name: CJW_TWITTER_CLIENT_SECRETS
               value: secrets/twitter-oauth-secret/twitter-oauth-secret.json
             - name: MINIO_ACCESS_KEY
@@ -96,34 +112,52 @@ spec:
             - mountPath: /app/secrets/intercom-oauth-secret
               name: intercom-oauth-secret
               readOnly: true
-            - mountPath: /app/secrets/socialaccount-secrets
-              name: socialaccount-secrets
-              readOnly: true
             - mountPath: /app/secrets/twitter-oauth-secret
               name: twitter-oauth-secret
               readOnly: true
+            - mountPath: /var/lib/cjwkernel/chroot
+              name: chroot
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN # To create network interface for sandbox in cjwkernel
+        - name: teardown-sandboxes
+          # "any volume mounts created by Containers in Pods must be destroyed
+          # (unmounted) by the Containers on termination"
+          # -- https://kubernetes.io/docs/concepts/storage/volumes/#mount-propagation
+          image: "gcr.io/cj-workbench/migrate:latest"
+          command: ["sh", "-c", "sleep infinity"]  # do nothing, until exit. (sh responds to INT signal)
+          securityContext:
+            privileged: true  # so it can unmount
+          lifecycle:
+            preStop:
+              exec:
+                command: ["bash", "-x", "/app/cjwkernel/teardown-sandboxes.sh"]
+          volumeMounts:
+            - mountPath: /var/lib/cjwkernel/chroot
+              name: chroot
+              mountPropagation: Bidirectional  # expose mounts to main app
       volumes:
         - name: google-oauth-secret
           secret:
             secretName: google-oauth-secret
+            defaultMode: 0400
             items:
               - key: json
                 path: google-oauth-secret.json
         - name: intercom-oauth-secret
           secret:
             secretName: intercom-oauth-secret
+            defaultMode: 0400
             items:
               - key: json
                 path: intercom-oauth-secret.json
-        - name: socialaccount-secrets
-          secret:
-            secretName: socialaccount-secrets
-            items:
-              - key: json
-                path: socialaccount-secrets.json
         - name: twitter-oauth-secret
           secret:
             secretName: twitter-oauth-secret
+            defaultMode: 0400
             items:
               - key: json
                 path: twitter-oauth-secret.json
+        - name: chroot
+          emptyDir: {}
