@@ -1,7 +1,7 @@
 /* globals describe, expect, it, jest */
 import React from 'react'
 import StatusLine from './StatusLine'
-import { mountWithI18n } from '../../test-utils'
+import { mountWithI18n } from '../../i18n/test-utils'
 
 describe('Status line', () => {
   const wrapper = (extraProps = {}) => {

@@ -1,7 +1,7 @@
 /* global describe, it, expect */
 import React from 'react'
 import I18nMessage from './I18nMessage'
-import { mountWithI18n } from '../test-utils'
+import { mountWithI18n } from '../i18n/test-utils'
 
 describe('I18nMessage', () => {
   const wrapper = (message, extraProps = {}) => {
