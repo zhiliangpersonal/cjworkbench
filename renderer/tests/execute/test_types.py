@@ -22,7 +22,7 @@ class PromptingErrorTest(unittest.TestCase):
                         "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
                         {
                             "columns": 1,
-                            "0": "“A”",
+                            "0": "A",
                             "found_type": "text",
                             "best_wanted_type": "number",
                         },
@@ -44,8 +44,8 @@ class PromptingErrorTest(unittest.TestCase):
                         "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
                         {
                             "columns": 2,
-                            "0": "“B”",
-                            "1": "“C”",
+                            "0": "B",
+                            "1": "C",
                             "found_type": "datetime",
                             "best_wanted_type": "number",
                         },
@@ -79,7 +79,7 @@ class PromptingErrorTest(unittest.TestCase):
                 (
                     I18nMessage(
                         "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText",
-                        {"columns": 2, "0": "“A”", "1": "“B”"},
+                        {"columns": 2, "0": "A", "1": "B"},
                     ),
                     [
                         QuickFix(
