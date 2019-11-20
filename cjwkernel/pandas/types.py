@@ -415,8 +415,8 @@ class QuickFix:
     Etymology: "Quick Fix" is a helpful Eclipse feature.
     """
 
-    text: str
-    """Text on the button"""
+    text: Union[str, Dict[str, Any]]
+    """Text on the button. Can be a dict parsable by `I18nMessage.from_dict`."""
 
     action: str
     """Reducer action to invoke, such as 'prependModule'"""
@@ -464,7 +464,9 @@ class QuickFix:
         assert len(self.args) == 2
         [module_slug, partial_params] = self.args
         return atypes.QuickFix(
-            atypes.I18nMessage.TODO_i18n(self.text),
+            atypes.I18nMessage.from_dict(self.text)
+            if isinstance(self.text, dict)
+            else atypes.I18nMessage.TODO_i18n(self.text),
             atypes.QuickFixAction.PrependStep(module_slug, partial_params),
         )
 
@@ -644,8 +646,8 @@ class ProcessResult:
     modules are unreachable. Usually that means `error` should be set.
     """
 
-    error: str = ""
-    """Error (if `dataframe` is zero) or warning text."""
+    error: Union[str, Dict[str, Any]] = ""
+    """Error (if `dataframe` is zero) or warning text. Can be a dict parsable by `I18nMessage.from_dict`."""
 
     json: Dict[str, Any] = field(default_factory=dict)
     """Custom JSON Object to provide to iframes."""

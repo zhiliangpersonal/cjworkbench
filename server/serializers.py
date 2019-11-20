@@ -249,7 +249,6 @@ class WfModuleSerializer(serializers.ModelSerializer):
     html_output = serializers.SerializerMethodField()
     versions = serializers.SerializerMethodField()
     files = serializers.SerializerMethodField()
-    quick_fixes = serializers.SerializerMethodField()
     module = serializers.SerializerMethodField()
     last_update_check = serializers.DateTimeField(format="iso-8601")
 
@@ -298,13 +297,6 @@ class WfModuleSerializer(serializers.ModelSerializer):
 
         return data
 
-    def get_quick_fixes(self, wfm):
-        crr = wfm.cached_render_result
-        if crr is None:
-            return []
-        else:
-            return [qf.to_dict() for err in crr.errors for qf in err.quick_fixes]
-
     def to_representation(self, wfm):
         ret = super().to_representation(wfm)
         ret.update(self.get_cached_render_result_data(wfm))
@@ -345,7 +337,7 @@ class WfModuleSerializer(serializers.ModelSerializer):
             "module",
             "tab_slug",
             "is_busy",
-            "output_error",
+            "output_errors",
             "output_status",
             "fetch_error",
             "files",
@@ -361,7 +353,6 @@ class WfModuleSerializer(serializers.ModelSerializer):
             "html_output",
             "versions",
             "last_relevant_delta_id",
-            "quick_fixes",
         )
 
 

@@ -13,10 +13,9 @@ describe('I18nMessage', () => {
     )
   }
 
-  it('should ignore null, undefined and empty array', () => {
+  it('should ignore null and undefined', () => {
     expect(wrapper(null).find('I18nMessage').text()).toEqual('')
     expect(wrapper(undefined).find('I18nMessage').text()).toEqual('')
-    expect(wrapper([]).find('I18nMessage').text()).toEqual('')
   })
 
   it('should just output plain strings', () => {
@@ -25,13 +24,5 @@ describe('I18nMessage', () => {
 
   it('should support "TODO_i18n" special message id', () => {
     expect(wrapper({ id: 'TODO_i18n', arguments: { text: 'Test me' } }).find('I18nMessage').text()).toEqual('Test me')
-  })
-
-  it('should support arrays of messages', () => {
-    expect(wrapper([
-      { id: 'TODO_i18n', arguments: { text: 'Test me' } },
-      null,
-      { id: 'TODO_i18n', arguments: { text: 'Test me more' } }]
-    ).find('I18nMessage').text()).toEqual('Test me\n\nTest me more')
   })
 })

@@ -51,7 +51,7 @@ export default class Param extends React.PureComponent {
     upstreamValue: PropTypes.any, // `null` if server hasn't been contacted or if actual value is `null`
     value: PropTypes.any, // local value: `null` if server hasn't been contacted or if actual value is `null`
     wfModuleId: PropTypes.number, // `null` if the server hasn't been contacted; otherwise, ID
-    wfModuleOutputError: messagePropType, // `null` if no wfModule, '' if no error
+    wfModuleOutputErrors: PropTypes.arrayOf(messagePropType), // `null` if no wfModule, empty if no error
     isWfModuleBusy: PropTypes.bool.isRequired,
     inputWfModuleId: PropTypes.number, // or `null`
     inputDeltaId: PropTypes.number, // or `null` ... TODO nix by making 0 fields depend on it

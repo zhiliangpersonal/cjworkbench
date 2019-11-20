@@ -10,8 +10,7 @@ describe('Status line', () => {
         isReadOnly={false}
         module={{ help_url: 'modules/foo' }}
         status='ok'
-        error=''
-        quickFixes={[]}
+        errors={[]}
         applyQuickFix={jest.fn()}
         {...extraProps}
       />
@@ -19,7 +18,7 @@ describe('Status line', () => {
   }
 
   it('renders an error message', () => {
-    const w = wrapper({ status: 'error', error: 'foo' })
+    const w = wrapper({ status: 'error', errors: [{ message: 'foo' }] })
     expect(w.find('p').text()).toEqual('foo')
   })
 
@@ -30,8 +29,10 @@ describe('Status line', () => {
     }
     const w = wrapper({
       status: 'error',
-      error: 'Wrong type',
-      quickFixes: [quickFix]
+      errors: [{
+        message: 'Wrong type',
+        quickFixes: [quickFix]
+      }]
     })
 
     expect(w.find('button').text()).toEqual('Fix it')
@@ -46,9 +47,11 @@ describe('Status line', () => {
     }
     const w = wrapper({
       status: 'error',
-      error: 'Wrong type',
-      isReadOnly: true,
-      quickFixes: [quickFix]
+      errors: [{
+        message: 'Wrong type',
+        quickFixes: [quickFix]
+      }],
+      isReadOnly: true
     })
     expect(w.find('p').text()).toEqual('Wrong type')
     expect(w.find('button')).toHaveLength(0)
@@ -65,8 +68,10 @@ describe('Status line', () => {
     }
     const w = wrapper({
       status: 'error',
-      error: 'Wrong type',
-      quickFixes: [quickFix1, quickFix2]
+      errors: [{
+        message: 'Wrong type',
+        quickFixes: [quickFix1, quickFix2]
+      }]
     })
 
     w.find('button').at(0).simulate('click')
@@ -89,8 +94,10 @@ describe('Status line', () => {
     }
     const errorProps = {
       status: 'error',
-      error: 'Wrong type',
-      quickFixes: [quickFix]
+      errors: [{
+        message: 'Wrong type',
+        quickFixes: [quickFix]
+      }]
     }
 
     const w = wrapper(errorProps)
@@ -100,7 +107,7 @@ describe('Status line', () => {
     w.update()
     expect(w.find('button').at(0).prop('disabled')).toBe(true)
 
-    w.setProps({ status: 'ok', error: '' })
+    w.setProps({ status: 'ok', errors: [] })
     w.setProps(errorProps)
 
     w.update()
@@ -108,7 +115,7 @@ describe('Status line', () => {
   })
 
   it('renders null when no error', () => {
-    const w = wrapper({ status: 'ok', error: '' })
+    const w = wrapper({ status: 'ok', errors: [] })
     expect(w.html()).toEqual('')
   })
 })

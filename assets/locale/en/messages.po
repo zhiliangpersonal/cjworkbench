@@ -671,34 +671,34 @@ msgstr ""
 "{Text} number {Numbers} datetime {Dates & Times} other{}}.}}"
 
 #: renderer/execute/types.py:123
-msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.shouldBeText"
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fixes.shouldBeText"
 msgstr "Convert to Text."
 
 #. i18n: The parameters {found_type} and {best_wanted_type} will have values
 #. among "text", "number", "datetime"; however, including an (possibly empty)
 #. "other" case is mandatory.
 #: renderer/execute/types.py:129
-msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general"
+msgid "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fixes.general"
 msgstr ""
 "Convert { found_type, select, text {Text} number {Numbers} datetime "
 "{Dates & Times} other {}} to {best_wanted_type, select, text {Text} "
 "number {Numbers} datetime {Dates & Times} other{}}."
 
-#: renderer/execute/wf_module.py:139
+#: renderer/execute/wf_module.py:137
 msgid "py.renderer.execute.wf_module.wrap_render_errors"
 msgstr ""
 "Something unexpected happened. We have been notified and are working to "
 "fix it. If this persists, contact us. Error code: {error_code}"
 
-#: renderer/execute/wf_module.py:295
+#: renderer/execute/wf_module.py:291
 msgid "py.renderer.execute.wf_module._render_module.TabCycleError"
 msgstr "The chosen tab depends on this one. Please choose another tab."
 
-#: renderer/execute/wf_module.py:302
+#: renderer/execute/wf_module.py:298
 msgid "py.renderer.execute.wf_module._render_module.TabOutputUnreachableError"
 msgstr "The chosen tab has no output. Please select another one."
 
-#: renderer/execute/wf_module.py:314
+#: renderer/execute/wf_module.py:308
 msgid "py.renderer.execute.wf_module._render_module.noLoadedModule"
 msgstr "Please delete this step: an administrator uninstalled its code."
 

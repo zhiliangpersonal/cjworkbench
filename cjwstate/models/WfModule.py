@@ -265,12 +265,12 @@ class WfModule(models.Model):
             return crr.status
 
     @property
-    def output_error(self):
+    def output_errors(self):
         crr = self.cached_render_result
         if crr is None:
-            return ""
+            return []
         else:
-            return [err.message.to_dict() for err in crr.errors] or ""
+            return [err.to_dict() for err in crr.errors]
 
     # ---- Authorization ----
     # User can access wf_module if they can access workflow

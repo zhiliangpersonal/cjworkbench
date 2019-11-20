@@ -13,53 +13,57 @@ class PromptingErrorTest(unittest.TestCase):
                 ),
             ]
         )
-        quick_fixes_result = err.as_quick_fixes()
+        result = err.as_errors_with_fixes()
         self.assertEqual(
-            quick_fixes_result,
+            result,
             [
-                QuickFix(
+                (
                     I18nMessage(
-                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general",
-                        {"found_type": "text", "best_wanted_type": "number"},
+                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
+                        {
+                            "columns": 1,
+                            "0": "“A”",
+                            "found_type": "text",
+                            "best_wanted_type": "number",
+                        },
                     ),
-                    QuickFixAction.PrependStep(
-                        "converttexttonumber", {"colnames": ["A"]}
-                    ),
+                    [
+                        QuickFix(
+                            I18nMessage(
+                                "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fixes.general",
+                                {"found_type": "text", "best_wanted_type": "number"},
+                            ),
+                            QuickFixAction.PrependStep(
+                                "converttexttonumber", {"colnames": ["A"]}
+                            ),
+                        )
+                    ],
                 ),
-                QuickFix(
+                (
                     I18nMessage(
-                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.general",
-                        {"found_type": "datetime", "best_wanted_type": "number"},
+                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
+                        {
+                            "columns": 2,
+                            "0": "“B”",
+                            "1": "“C”",
+                            "found_type": "datetime",
+                            "best_wanted_type": "number",
+                        },
                     ),
-                    QuickFixAction.PrependStep(
-                        "converttexttonumber", {"colnames": ["B", "C"]}
-                    ),
-                ),
-            ],
-        )
-
-        error_result = err.as_error_message()
-        self.assertEqual(
-            error_result,
-            [
-                I18nMessage(
-                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
-                    {
-                        "columns": 1,
-                        "0": "“A”",
-                        "found_type": "text",
-                        "best_wanted_type": "number",
-                    },
-                ),
-                I18nMessage(
-                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
-                    {
-                        "columns": 2,
-                        "0": "“B”",
-                        "1": "“C”",
-                        "found_type": "datetime",
-                        "best_wanted_type": "number",
-                    },
+                    [
+                        QuickFix(
+                            I18nMessage(
+                                "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fixes.general",
+                                {
+                                    "found_type": "datetime",
+                                    "best_wanted_type": "number",
+                                },
+                            ),
+                            QuickFixAction.PrependStep(
+                                "converttexttonumber", {"colnames": ["B", "C"]}
+                            ),
+                        )
+                    ],
                 ),
             ],
         )
@@ -68,28 +72,25 @@ class PromptingErrorTest(unittest.TestCase):
         err = PromptingError(
             [PromptingError.WrongColumnType(["A", "B"], None, frozenset({"text"}))]
         )
-        quick_fixes_result = err.as_quick_fixes()
+        result = err.as_errors_with_fixes()
         self.assertEqual(
-            quick_fixes_result,
+            result,
             [
-                QuickFix(
+                (
                     I18nMessage(
-                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fix.shouldBeText"
+                        "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText",
+                        {"columns": 2, "0": "“A”", "1": "“B”"},
                     ),
-                    QuickFixAction.PrependStep(
-                        "converttotext", {"colnames": ["A", "B"]}
-                    ),
-                )
-            ],
-        )
-
-        error_result = err.as_error_message()
-        self.assertEqual(
-            error_result,
-            [
-                I18nMessage(
-                    "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText",
-                    {"columns": 2, "0": "“A”", "1": "“B”"},
+                    [
+                        QuickFix(
+                            I18nMessage(
+                                "py.renderer.execute.types.PromptingError.WrongColumnType.as_quick_fixes.shouldBeText"
+                            ),
+                            QuickFixAction.PrependStep(
+                                "converttotext", {"colnames": ["A", "B"]}
+                            ),
+                        )
+                    ],
                 )
             ],
         )

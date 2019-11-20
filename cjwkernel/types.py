@@ -874,19 +874,23 @@ class RenderResult:
 
     @classmethod
     def from_error(
-        cls,
-        messages: Union[I18nMessage, List[I18nMessage]],
-        *,
-        quick_fixes: List[QuickFix] = [],
+        cls, message: I18nMessage, *, quick_fixes: List[QuickFix] = []
     ) -> RenderResult:
-        messages = [messages] if isinstance(messages, I18nMessage) else messages
-        assert len(messages) > 0
-        first_message = messages.pop(0)
-        errors = [
-            RenderError(first_message, quick_fixes),
-            *[RenderError(message) for message in messages],
-        ]
+        errors = [RenderError(message, quick_fixes)]
         return cls(errors=errors)
+
+    @classmethod
+    def from_errors(
+        cls, errors: List[Union[I18nMessage, Tuple[I18nMessage, List[QuickFix]]]]
+    ) -> RenderResult:
+        return cls(
+            errors=[
+                RenderError(error[0], error[1])
+                if isinstance(error, tuple)
+                else RenderError(error)
+                for error in errors
+            ]
+        )
 
     def to_thrift(self) -> ttypes.RenderResult:
         return ttypes.RenderResult(
