@@ -86,7 +86,7 @@ class PromptingError(Exception):
             icu_args = {
                 "columns": len(self.column_names),
                 **{
-                    str(i): f"“{self.column_names[i]}”"
+                    str(i): self.column_names[i]
                     for i in range(0, len(self.column_names))
                 },
             }
@@ -97,10 +97,10 @@ class PromptingError(Exception):
                 return make_i18nMessage(
                     "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.shouldBeText",
                     "{ columns, plural, offset:2"
-                    " =1 {The column {0} must be converted to Text.}"
-                    " =2 {The columns {0} and {1} must be converted to Text.}"
-                    " one {The columns {0}, {1} and {2} must be converted to Text.}"
-                    " other {The columns {0}, {1} and # others must be converted to Text.}}",
+                    " =1 {The column “{0}” must be converted to Text.}"
+                    " =2 {The columns “{0}” and “{1}” must be converted to Text.}"
+                    " one {The columns “{0}”, “{1}” and “{2}” must be converted to Text.}"
+                    " other {The columns “{0}”, “{1}” and # others must be converted to Text.}}",
                     icu_args,
                 )
             else:
@@ -110,10 +110,10 @@ class PromptingError(Exception):
                 return make_i18nMessage(
                     "py.renderer.execute.types.PromptingError.WrongColumnType.as_error_message.general",
                     "{ columns, plural, offset:2"
-                    " =1 {The column {0} must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}}.}"
-                    " =2 {The columns {0} and {1} must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times}  other{}}.}"
-                    " one {The columns {0}, {1} and {2} must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.}"
-                    " other {The columns {0}, {1} and # others must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.}}",
+                    " =1 {The column “{0}” must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}}.}"
+                    " =2 {The columns “{0}” and “{1}” must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times}  other{}}.}"
+                    " one {The columns “{0}”, “{1}” and “{2}” must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.}"
+                    " other {The columns “{0}”, “{1}” and # others must be converted from { found_type, select, text {Text} number {Numbers} datetime {Dates & Times} other {}} to {best_wanted_type, select, text {Text} number {Numbers} datetime {Dates & Times} other{}}.}}",
                     icu_args,
                 )
 
