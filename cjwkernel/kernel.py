@@ -5,15 +5,14 @@ import marshal
 import os
 import os.path
 from pathlib import Path
+import pyspawner
 import selectors
 import time
 from typing import Any, Dict, List, Optional
 import thrift.protocol.TBinaryProtocol
 import thrift.transport.TTransport
-from cjwkernel.chroot import ChrootContext, READONLY_CHROOT_CONTEXT
+from cjwkernel.chroot import ChrootContext, READONLY_CHROOT_DIR
 from cjwkernel.errors import ModuleCompileError, ModuleTimeoutError, ModuleExitedError
-from cjwkernel.forkserver import Forkserver
-from cjwkernel.forkserver.protocol import NetworkConfig
 from cjwkernel.thrift import ttypes
 from cjwkernel.types import (
     ArrowTable,
@@ -117,7 +116,7 @@ class Kernel:
     the entire process must be killed: otherwise, the module may leak one
     workflow's data into another workflow (intentionally or not).
 
-    The solution: "forkserver". One "forkserver" process loads 100MB of Python
+    The solution: "pyspawner". One "pyspawner" process loads 100MB of Python
     deps and then idles. The "compile" method compiles a user's module, then
     forks and evaluates it in a child process to ensure sanity. The
     "migrate_params", "render" and "fetch" methods fork, evaluate the user's
@@ -139,7 +138,7 @@ class Kernel:
         self.migrate_params_timeout = migrate_params_timeout
         self.fetch_timeout = fetch_timeout
         self.render_timeout = render_timeout
-        self._forkserver = Forkserver(
+        self._pyspawner = pyspawner.Client(
             child_main="cjwkernel.pandas.main.main",
             environment={
                 # SECURITY: children inherit these values
@@ -233,7 +232,7 @@ class Kernel:
         )
 
     def __del__(self):
-        self._forkserver.close()
+        self._pyspawner.close()
 
     def compile(self, path: Path, module_slug: str) -> CompiledModule:
         """
@@ -259,7 +258,7 @@ class Kernel:
 
     def _validate(self, compiled_module: CompiledModule) -> None:
         self._run_in_child(
-            chroot_context=READONLY_CHROOT_CONTEXT,
+            chroot_dir=READONLY_CHROOT_DIR,
             network_config=None,
             compiled_module=compiled_module,
             timeout=self.validate_timeout,
@@ -276,7 +275,7 @@ class Kernel:
         """
         request = RawParams(params).to_thrift()
         response = self._run_in_child(
-            chroot_context=READONLY_CHROOT_CONTEXT,
+            chroot_dir=READONLY_CHROOT_DIR,
             network_config=None,
             compiled_module=compiled_module,
             timeout=self.migrate_params_timeout,
@@ -297,9 +296,8 @@ class Kernel:
         fetch_result: Optional[FetchResult],
         output_filename: str,
     ) -> RenderResult:
-        basedir_seen_by_module = Path("/") / basedir.relative_to(
-            chroot_context.chroot.root
-        )
+        chroot_dir = chroot_context.chroot.root
+        basedir_seen_by_module = Path("/") / basedir.relative_to(chroot_dir)
         request = ttypes.RenderRequest(
             str(basedir_seen_by_module),
             input_table.to_thrift(),
@@ -311,8 +309,8 @@ class Kernel:
         try:
             with chroot_context.writable_file(basedir / output_filename):
                 result = self._run_in_child(
-                    chroot_context=chroot_context,
-                    network_config=NetworkConfig(),  # TODO disallow networking
+                    chroot_dir=chroot_dir,
+                    network_config=pyspawner.NetworkConfig(),  # TODO disallow networking
                     compiled_module=compiled_module,
                     timeout=self.render_timeout,
                     result=ttypes.RenderResult(),
@@ -343,9 +341,8 @@ class Kernel:
         input_parquet_filename: str,
         output_filename: str,
     ) -> FetchResult:
-        basedir_seen_by_module = Path("/") / basedir.relative_to(
-            chroot_context.chroot.root
-        )
+        chroot_dir = chroot_context.chroot.root
+        basedir_seen_by_module = Path("/") / basedir.relative_to(chroot_dir)
         request = ttypes.FetchRequest(
             str(basedir_seen_by_module),
             params.to_thrift(),
@@ -357,8 +354,8 @@ class Kernel:
         try:
             with chroot_context.writable_file(basedir / output_filename):
                 result = self._run_in_child(
-                    chroot_context=chroot_context,
-                    network_config=NetworkConfig(),
+                    chroot_dir=chroot_dir,
+                    network_config=pyspawner.NetworkConfig(),
                     compiled_module=compiled_module,
                     timeout=self.fetch_timeout,
                     result=ttypes.FetchResult(),
@@ -380,8 +377,8 @@ class Kernel:
     def _run_in_child(
         self,
         *,
-        chroot_context: ChrootContext,
-        network_config: Optional[NetworkConfig],
+        chroot_dir: Path,
+        network_config: Optional[pyspawner.NetworkConfig],
         compiled_module: CompiledModule,
         timeout: float,
         result: Any,
@@ -402,11 +399,12 @@ class Kernel:
         """
         limit_time = time.time() + timeout
 
-        module_process = self._forkserver.spawn_child(
-            process_name=compiled_module.module_slug,
-            chroot_dir=chroot_context.chroot.root,
-            network_config=network_config,
+        module_process = self._pyspawner.spawn_child(
             args=[compiled_module, function, args],
+            process_name=compiled_module.module_slug,
+            sandbox_config=pyspawner.SandboxConfig(
+                chroot_dir=chroot_dir, network=network_config
+            ),
         )
 
         # stdout is Thrift package; stderr is logs

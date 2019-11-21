@@ -5,10 +5,16 @@ import errno
 import os
 import os.path
 from pathlib import Path
+import shutil
 import threading
 from typing import Callable, ContextManager, Iterator, List, Tuple
 from cjwkernel.util import tempdir_context, tempfile_context
 from cjwkernel.errors import ModuleExitedError
+
+
+assert (
+    shutil.rmtree.avoids_symlink_attacks
+), "chroot is unusable: a child's symlinks can make a parent delete files"
 
 
 def _walk_and_delete_upper_files(
@@ -69,6 +75,10 @@ def _walk_and_delete_upper_files(
 
 @dataclass
 class Chroot:
+    """
+    Paths pointing to an overlayfs-backed chroot.
+    """
+
     root: Path
     """
     Path where we'll call `chroot`.
@@ -291,10 +301,4 @@ _base = Path("/var/lib/cjwkernel/chroot-layers/base")
 EDITABLE_CHROOT = Chroot(
     _chroots / "editable" / "root", _base, _chroots / "editable" / "upperfs" / "upper"
 )
-READONLY_CHROOT = Chroot(
-    _chroots / "readonly" / "root",
-    # TODO remove "base/upper" logic. Readonly chroot doesn't use/need them.
-    _base,
-    _chroots / "readonly" / "upper",
-)
-READONLY_CHROOT_CONTEXT = ChrootContext(READONLY_CHROOT)  # without locking
+READONLY_CHROOT_DIR = _chroots / "readonly" / "root"
