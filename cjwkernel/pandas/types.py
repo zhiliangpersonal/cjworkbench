@@ -14,6 +14,9 @@ from pandas.api.types import is_numeric_dtype, is_datetime64_dtype
 import pyarrow
 from .validate import validate_dataframe
 from .. import settings, types as atypes
+from itertools import chain
+
+make_i18nMessage = atypes.make_i18nMessage
 
 
 class ColumnType(ABC):
@@ -399,6 +402,25 @@ class TabOutput:
         )
 
 
+def _coerce_to_i18n_message_dict(
+    value: Union[str, Dict[str, Any]]
+) -> atypes.I18nMessageDict:
+    if isinstance(value, str):
+        return atypes.I18nMessage.TODO_i18n(value).to_dict()
+    elif isinstance(value, dict):
+        try:
+            return atypes.I18nMessage(value["id"], value.get("arguments", {})).to_dict()
+        except KeyError:
+            raise ValueError(
+                "This dict cannot be coerced to I18nMessageDict: %s" % value
+            )
+    else:
+        raise TypeError(
+            "%s if of type %s, which cannot be coerced to I18nMessageDict"
+            % (value, type(value).__name__)
+        )
+
+
 @dataclass(frozen=True)
 class QuickFix:
     """
@@ -415,8 +437,8 @@ class QuickFix:
     Etymology: "Quick Fix" is a helpful Eclipse feature.
     """
 
-    text: Union[str, Dict[str, Any]]
-    """Text on the button. Can be a dict parsable by `I18nMessage.from_dict`."""
+    text: atypes.I18nMessageDict
+    """Text on the button. Must be a dict parseable by `I18nMessage.from_dict`."""
 
     action: str
     """Reducer action to invoke, such as 'prependModule'"""
@@ -441,6 +463,11 @@ class QuickFix:
             except TypeError as err:
                 raise ValueError(str(err))
             try:
+                value["text"] = _coerce_to_i18n_message_dict(value["text"])
+            except KeyError as err:
+                raise ValueError("Missing text from quick fix")
+
+            try:
                 return QuickFix(**value)
             except TypeError as err:
                 raise ValueError(str(err))
@@ -455,7 +482,7 @@ class QuickFix:
                 json.dumps(args)
             except TypeError as err:
                 raise ValueError(str(err))
-            return QuickFix(text, action, args)
+            return QuickFix(_coerce_to_i18n_message_dict(text), action, args)
         else:
             raise ValueError("Cannot build QuickFix from value: %r" % value)
 
@@ -464,9 +491,7 @@ class QuickFix:
         assert len(self.args) == 2
         [module_slug, partial_params] = self.args
         return atypes.QuickFix(
-            atypes.I18nMessage.from_dict(self.text)
-            if isinstance(self.text, dict)
-            else atypes.I18nMessage.TODO_i18n(self.text),
+            atypes.I18nMessage.from_dict(self.text),
             atypes.QuickFixAction.PrependStep(module_slug, partial_params),
         )
 
@@ -618,6 +643,43 @@ def arrow_table_to_dataframe(
     return dataframe, columns
 
 
+SimpleModuleError = Union[str, atypes.I18nMessageDict]
+ModuleErrorWithQuickFix = Union[SimpleModuleError, Tuple[SimpleModuleError, Any]]
+ModuleError = Union[ModuleErrorWithQuickFix, List[ModuleErrorWithQuickFix]]
+""" ModuleError is the type we expect from modules to return when there is an error.
+When coercing, we convert it to the simpler type held in `ProcessResult`.
+"""
+ProcessResultError = List[Tuple[atypes.I18nMessageDict, List[QuickFix]]]
+
+
+def _coerce_to_process_result_error(
+    value: ModuleError, can_nest: bool = True
+) -> ProcessResultError:
+    if isinstance(value, (str, dict)):
+        return ProcessResult.from_error(_coerce_to_i18n_message_dict(value)).errors
+    elif isinstance(value, tuple):
+        if len(value) != 2:
+            raise ValueError("Expected a 2-tuple, got a %d-tuple" % len(value))
+
+        return [(_coerce_to_i18n_message_dict(value[0]), [QuickFix.coerce(value[1])])]
+    elif (isinstance(value, list)) and can_nest:
+        if not value:
+            raise ValueError("For no errors, use None instead of []")
+        try:
+            # collect the results for each item in a single list of tuples
+            return list(
+                chain.from_iterable(
+                    [_coerce_to_process_result_error(val, False) for val in value]
+                )
+            )
+        except (ValueError, TypeError) as e:
+            raise ValueError(
+                "The list %s cannot be coerced to module error" % value
+            ) from e
+    else:
+        raise TypeError("The value %s cannot be coerced to module error" % value)
+
+
 @dataclass
 class ProcessResult:
     """
@@ -646,14 +708,12 @@ class ProcessResult:
     modules are unreachable. Usually that means `error` should be set.
     """
 
-    error: Union[str, Dict[str, Any]] = ""
-    """Error (if `dataframe` is zero) or warning text. Can be a dict parsable by `I18nMessage.from_dict`."""
+    errors: ProcessResultError = field(default_factory=list)
+    """Errors (if `dataframe` is zero) or warning texts, as `I18nMessageDict`s; 
+    each one may be accompanied by a list of quick fixes."""
 
     json: Dict[str, Any] = field(default_factory=dict)
     """Custom JSON Object to provide to iframes."""
-
-    quick_fixes: List[QuickFix] = field(default_factory=list)
-    """Quick-fix buttons to display to the user."""
 
     columns: List[Column] = field(default_factory=list)
     """Columns of `dataframe` (empty if `dataframe` has no columns)."""
@@ -678,15 +738,14 @@ class ProcessResult:
             # self.assertProcessResultEquals(..., ...) instead of hacking the
             # __eq__() operator like this. But not harm done -- yet.
             and self.dataframe.astype(str).equals(other.dataframe.astype(str))
-            and self.error == other.error
+            and self.errors == other.errors
             and self.json == other.json
-            and self.quick_fixes == other.quick_fixes
             and self.columns == other.columns
         )
 
     def truncate_in_place_if_too_big(self) -> "ProcessResult":
         """
-        Truncate dataframe in-place and add to self.error if truncated.
+        Truncate dataframe in-place and add to self.errors if truncated.
         """
         # import after app startup. [2019-08-21, adamhooper] may not be needed
         old_len = len(self.dataframe)
@@ -695,11 +754,13 @@ class ProcessResult:
             self.dataframe.drop(
                 range(settings.MAX_ROWS_PER_TABLE, old_len), inplace=True
             )
-            warning = "Truncated output from %d rows to %d" % (old_len, new_len)
-            if self.error:
-                self.error = f"{self.error}\n{warning}"
-            else:
-                self.error = warning
+            self.errors += ProcessResult.from_error(
+                make_i18nMessage(
+                    "py.cjwkernel.pandas.types.ProcessResult.truncate_in_place_if_too_big.warning",
+                    "Truncated output from {old_number} rows to {new_number}",
+                    {"old_number": old_len, "new_number": new_len},
+                )
+            ).errors
             self.dataframe.reset_index(inplace=True, drop=True)
             # Nix unused categories
             for column in self.dataframe:
@@ -717,7 +778,7 @@ class ProcessResult:
         'unreachable': there is no DataFrame or error.
         """
         if self.dataframe.columns.empty:
-            if self.error:
+            if self.errors:
                 return "error"
             else:
                 return "unreachable"
@@ -733,6 +794,21 @@ class ProcessResult:
         return TableShape(len(self.dataframe), self.columns)
 
     @classmethod
+    def from_error(
+        cls, message: Union[atypes.I18nMessage, atypes.I18nMessageDict]
+    ) -> ProcessResult:
+        return cls(
+            errors=[
+                (
+                    message.to_dict()
+                    if isinstance(message, atypes.I18nMessage)
+                    else message,
+                    [],
+                )
+            ]
+        )
+
+    @classmethod
     def coerce(
         cls, value: Any, try_fallback_columns: Iterable[Column] = []
     ) -> ProcessResult:
@@ -744,9 +820,9 @@ class ProcessResult:
         * value is None => return empty dataframe
         * value is a ProcessResult => return it
         * value is a DataFrame => empty error and json
-        * value is a str => error=str, empty dataframe and json
-        * value is a (DataFrame, err) => empty json (either may be None)
-        * value is a (DataFrame, err, dict) => obvious (any may be None)
+        * value is a ModuleError => errors get populated using the data in it; empty dataframe and json
+        * value is a (DataFrame, ModuleError) => empty json (either may be None)
+        * value is a (DataFrame, ModuleError, dict) => obvious (any may be None)
         * value is a dict => pass it as kwargs
         * else we generate an error with empty dataframe and json
 
@@ -772,15 +848,29 @@ class ProcessResult:
             validate_dataframe(value)
             columns = _infer_columns(value, {}, try_fallback_columns)
             return cls(dataframe=value, columns=columns)
-        elif isinstance(value, str):
-            return cls(error=value)
         elif isinstance(value, dict):
             value = dict(value)  # shallow copy
             # Coerce quick_fixes, if it's there
+            old_error = {}
             try:
-                value["quick_fixes"] = [
-                    QuickFix.coerce(v) for v in value["quick_fixes"]
+                old_error["quick_fixes"] = [
+                    QuickFix.coerce(v) for v in value.pop("quick_fixes")
                 ]
+            except KeyError:
+                pass
+
+            try:
+                old_error["error"] = _coerce_to_i18n_message_dict(value.pop("error"))
+            except KeyError:
+                pass
+
+            errors = (
+                [(old_error.pop("error"), old_error.pop("quick_fixes", []))]
+                if old_error
+                else []
+            )
+            try:
+                errors = errors + _coerce_to_process_result_error(value.pop("errors"))
             except KeyError:
                 pass
 
@@ -796,7 +886,7 @@ class ProcessResult:
                 pass
 
             try:
-                return cls(dataframe=dataframe, **value)
+                return cls(dataframe=dataframe, errors=errors, **value)
             except TypeError as err:
                 raise ValueError(
                     (
@@ -809,90 +899,100 @@ class ProcessResult:
                 dataframe, error = value
                 if dataframe is None:
                     dataframe = pd.DataFrame()
-                if error is None:
-                    error = ""
-                if not isinstance(dataframe, pd.DataFrame) or not isinstance(
-                    error, str
-                ):
-                    return cls(
-                        error=(
-                            (
-                                "There is a bug in this module: expected "
-                                "(DataFrame, str) return type, got (%s,%s)"
-                            )
-                            % (type(dataframe).__name__, type(error).__name__)
+                try:
+                    errors = (
+                        [] if error is None else _coerce_to_process_result_error(error)
+                    )
+                except TypeError:
+                    errors = None
+                if not isinstance(dataframe, pd.DataFrame) or errors is None:
+                    return cls.from_error(
+                        make_i18nMessage(
+                            "py.cjwkernel.pandas.types.ProcessResult.wrongReturnType",
+                            "There is a bug in this module: expected "
+                            "{expected_type} return type, got {type}",
+                            {
+                                "expected_type": "(DataFrame, ModuleError)",
+                                "type": "(%s, %s)"
+                                % (type(dataframe).__name__, type(error).__name__),
+                            },
                         )
                     )
                 validate_dataframe(dataframe)
                 columns = _infer_columns(dataframe, {}, try_fallback_columns)
-                return cls(dataframe=dataframe, error=error)
+                return cls(dataframe=dataframe, errors=errors)
             elif len(value) == 3:
                 dataframe, error, json = value
                 if dataframe is None:
                     dataframe = pd.DataFrame()
-                if error is None:
-                    error = ""
+                try:
+                    errors = (
+                        [] if error is None else _coerce_to_process_result_error(error)
+                    )
+                except TypeError:
+                    errors = None
                 if json is None:
                     json = {}
                 if (
                     not isinstance(dataframe, pd.DataFrame)
-                    or not isinstance(error, str)
+                    or errors is None
                     or not isinstance(json, dict)
                 ):
-                    return cls(
-                        error=(
-                            (
-                                "There is a bug in this module: expected "
-                                "(DataFrame, str, dict) return value, got "
-                                "(%s, %s, %s)"
-                            )
-                            % (
-                                type(dataframe).__name__,
-                                type(error).__name__,
-                                type(json).__name__,
-                            )
+                    return cls.from_error(
+                        make_i18nMessage(
+                            "py.cjwkernel.pandas.types.ProcessResult.wrongReturnType",
+                            "There is a bug in this module: expected "
+                            "{expected_type} return type, got {type}",
+                            {
+                                "expected_type": "(DataFrame, ModuleError, dict)",
+                                "type": "(%s, %s, %s)"
+                                % (
+                                    type(dataframe).__name__,
+                                    type(error).__name__,
+                                    type(json).__name__,
+                                ),
+                            },
                         )
                     )
                 validate_dataframe(dataframe)
                 columns = _infer_columns(dataframe, {}, try_fallback_columns)
-                return cls(dataframe=dataframe, error=error, json=json, columns=columns)
-            return cls(
-                error=(
-                    (
-                        "There is a bug in this module: expected 2-tuple or 3-tuple "
-                        "return value; got %d-tuple "
-                    )
-                    % len(value)
+                return cls(
+                    dataframe=dataframe, errors=errors, json=json, columns=columns
+                )
+            return cls.from_error(
+                make_i18nMessage(
+                    "py.cjwkernel.pandas.types.ProcessResult.gotBigTuple",
+                    "There is a bug in this module: expected 2-tuple or 3-tuple "
+                    "return value; got {length}-tuple",
+                    {"length": len(value)},
                 )
             )
+        else:
+            try:
+                return cls(errors=_coerce_to_process_result_error(value))
+            except (TypeError, ValueError):
+                pass
 
-        return cls(
-            error=(
-                "There is a bug in this module: invalid return type %s"
-                % type(value).__name__
+        return cls.from_error(
+            make_i18nMessage(
+                "py.cjwkernel.pandas.types.ProcessResult.invalidReturnType",
+                "There is a bug in this module: invalid return type {type}",
+                {"type": type(value).__name__},
             )
         )
 
     @classmethod
     def from_arrow(self, value: atypes.RenderResult) -> ProcessResult:
         dataframe, columns = arrow_table_to_dataframe(value.table)
-        if value.errors:
-            if value.errors[0].message.id == "TODO_i18n":
-                error = value.errors[0].message.args["text"]
-            else:
-                error = value.errors[0].message.id
-            quick_fixes = [
-                QuickFix.from_arrow(qf) for qf in value.errors[0].quick_fixes
-            ]
-        else:
-            error = ""
-            quick_fixes = []
+        errors = [
+            (
+                error.message.to_dict(),
+                [QuickFix.from_arrow(qf) for qf in error.quick_fixes],
+            )
+            for error in value.errors
+        ]
         return ProcessResult(
-            dataframe=dataframe,
-            error=error,
-            json=value.json,
-            quick_fixes=quick_fixes,
-            columns=columns,
+            dataframe=dataframe, errors=errors, json=value.json, columns=columns
         )
 
     def to_arrow(self, path: Path) -> atypes.RenderResult:
@@ -912,13 +1012,12 @@ class ProcessResult:
         ProcessResult.
         """
         table = dataframe_to_arrow_table(self.dataframe, self.columns, path)
-        if self.error:
-            error = atypes.RenderError(
-                atypes.I18nMessage.TODO_i18n(self.error),
-                [qf.to_arrow() for qf in self.quick_fixes],
+        errors = [
+            atypes.RenderError(
+                atypes.I18nMessage.from_dict(error[0]),
+                [qf.to_arrow() for qf in error[1]],
             )
-            errors = [error]
-        else:
-            errors = []
+            for error in self.errors
+        ]
 
         return atypes.RenderResult(table, errors, self.json)
