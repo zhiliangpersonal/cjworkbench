@@ -24,7 +24,7 @@ describe('Status line', () => {
 
   it('renders and applies a quick fix', () => {
     const quickFix = {
-      buttonText: { id: 'TODO_i18n', arguments: { text: 'Fix it' } },
+      buttonText: 'Fix it',
       action: { type: 'prependStep', moduleSlug: 'dosomething', partialParams: { A: 'B' } }
     }
     const w = wrapper({
@@ -42,7 +42,7 @@ describe('Status line', () => {
 
   it('shows error but not quick fixes if isReadOnly', () => {
     const quickFix = {
-      buttonText: { id: 'TODO_i18n', arguments: { text: 'Fix it' } },
+      buttonText: 'Fix it',
       action: { type: 'prependStep', moduleSlug: 'dosomething', partialParams: { A: 'B' } }
     }
     const w = wrapper({
@@ -59,11 +59,11 @@ describe('Status line', () => {
 
   it('prevents double-applying a quick fix', () => {
     const quickFix1 = {
-      buttonText: { id: 'TODO_i18n', arguments: { text: 'Fix it' } },
+      buttonText: 'Fix it',
       action: { type: 'prependStep', moduleSlug: 'dosomething', partialParams: { A: 'B' } }
     }
     const quickFix2 = {
-      buttonText: { id: 'TODO_i18n', arguments: { text: 'Fix it more' } },
+      buttonText: 'Fix it more',
       action: { type: 'prependStep', moduleSlug: 'dosomething2', partialParams: { B: 'C' } }
     }
     const w = wrapper({
@@ -89,7 +89,7 @@ describe('Status line', () => {
     //
     // expected results: you can quick fix again
     const quickFix = {
-      buttonText: { id: 'TODO_i18n', arguments: { text: 'Fix it' } },
+      buttonText: 'Fix it',
       action: { type: 'prependStep', moduleSlug: 'dosomething', partialParams: { A: 'B' } }
     }
     const errorProps = {

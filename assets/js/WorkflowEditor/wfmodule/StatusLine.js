@@ -5,7 +5,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import QuickFix, { QuickFixPropTypes } from './QuickFix'
-import I18nMessage, { messagePropType } from '../I18nMessage'
 
 const StatusLine = React.memo(function StatusLine ({ status, errors, applyQuickFix, isReadOnly }) {
   const [clickedAnyQuickFix, setClickedQuickFix] = useState(false)
@@ -24,7 +23,7 @@ const StatusLine = React.memo(function StatusLine ({ status, errors, applyQuickF
     <>
       {errors.map(({ message, quickFixes }, j) => (
         <div className='wf-module-error-msg' key={j}>
-          <p><I18nMessage message={message} /></p>
+          <p>{message}</p>
           {quickFixes && quickFixes.length && !isReadOnly ? (
             <ul className='quick-fixes'>
               {quickFixes.map((quickFix, i) => (
@@ -46,7 +45,7 @@ const StatusLine = React.memo(function StatusLine ({ status, errors, applyQuickF
 StatusLine.propTypes = {
   status: PropTypes.oneOf(['ok', 'busy', 'error', 'unreachable']).isRequired,
   isReadOnly: PropTypes.bool.isRequired, // if true, cannot apply quick fixes
-  errors: PropTypes.arrayOf(PropTypes.shape({ message: messagePropType.isRequired, quickFixes: PropTypes.arrayOf(PropTypes.shape(QuickFixPropTypes)) })), // may be empty
+  errors: PropTypes.arrayOf(PropTypes.shape({ message: PropTypes.string.isRequired, quickFixes: PropTypes.arrayOf(PropTypes.shape(QuickFixPropTypes)) })), // may be empty
   applyQuickFix: PropTypes.func.isRequired // func(action, args) => undefined
 }
 

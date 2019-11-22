@@ -313,7 +313,7 @@ describe('WfModule, not read-only mode', () => {
     mockApi.addModule = jest.fn(() => Promise.resolve(null))
     generateSlug.mockImplementation(prefix => prefix + 'X')
     const quickFix = {
-      buttonText: { id: 'TODO_i18n', arguments: { text: 'Fix it' } },
+      buttonText: 'Fix it',
       action: { type: 'prependStep', moduleSlug: 'dosomething', partialParams: { A: 'B' } }
     }
     const store = mockStore({
