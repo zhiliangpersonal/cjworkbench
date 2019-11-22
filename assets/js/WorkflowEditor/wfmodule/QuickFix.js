@@ -32,9 +32,8 @@ export default class QuickFix extends React.PureComponent {
         disabled={disabled}
         className='quick-fix action-button button-orange'
         onClick={this.handleClick}
-      >
-        {buttonText}
-      </button>
+        dangerouslySetInnerHTML={{ __html: buttonText }}
+      />
     )
   }
 }
