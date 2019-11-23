@@ -9,7 +9,10 @@ from cjwstate.models import Workflow, WfModule, ModuleVersion, StoredObject, Tab
 from cjwstate.params import get_migrated_params
 from server.settingsutils import workbench_user_display
 from cjwstate.models.param_spec import ParamSpec
+from cjwkernel.types import I18nMessage, I18nMessageDict
 from cjworkbench.i18n import default_locale
+from cjworkbench.i18n.trans import trans_html
+
 
 User = get_user_model()
 
@@ -243,6 +246,27 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ("email", "display_name", "id", "is_staff")
 
 
+def translate_i18n_message(
+    message: Union[I18nMessage, I18nMessageDict], locale_id: str
+) -> str:
+    if isinstance(message, I18nMessage):
+        if message.id == "TODO_i18n":
+            return message.args["text"]
+        else:
+            default_message = (
+                message.id
+                if locale_id == default_locale
+                else trans_html(
+                    default_locale, message.id, default=None, parameters=message.args
+                )
+            )
+            return trans_html(
+                locale_id, message.id, default=default_message, parameters=message.args
+            )
+    if isinstance(message, dict):
+        return translate_i18n_message(I18nMessage.from_dict(message), locale_id)
+
+
 class WfModuleSerializer(serializers.ModelSerializer):
     params = serializers.SerializerMethodField()
     secrets = serializers.SerializerMethodField()  # NOT ACTUAL SECRETS
@@ -251,6 +275,25 @@ class WfModuleSerializer(serializers.ModelSerializer):
     files = serializers.SerializerMethodField()
     module = serializers.SerializerMethodField()
     last_update_check = serializers.DateTimeField(format="iso-8601")
+    output_errors = serializers.SerializerMethodField()
+
+    def get_output_errors(self, wfm):
+        locale_id = self.context.get("locale_id", default_locale)
+        return [
+            {
+                "message": translate_i18n_message(error["message"], locale_id),
+                "quickFixes": [
+                    {
+                        "buttonText": translate_i18n_message(
+                            qf["buttonText"], locale_id
+                        ),
+                        "action": qf["action"],
+                    }
+                    for qf in error["quickFixes"]
+                ],
+            }
+            for error in wfm.output_errors or []
+        ]
 
     def get_html_output(self, wfm):
         if wfm.module_version is not None:

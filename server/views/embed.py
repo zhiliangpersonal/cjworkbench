@@ -20,7 +20,9 @@ def embed(request, wfmodule_id):
         wf_module = None
 
     if wf_module:
-        workflow_module_serializer = WfModuleSerializer(wf_module)
+        workflow_module_serializer = WfModuleSerializer(
+            wf_module, context={"locale_id": request.locale_id}
+        )
         workflow_serializer = WorkflowSerializerLite(
             wf_module.workflow, context={"request": request}
         )

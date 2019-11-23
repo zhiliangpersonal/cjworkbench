@@ -61,7 +61,10 @@ def make_init_state(request, workflow=None, modules=None):
                 wf_modules = list(WfModule.live_in_workflow(workflow))
 
                 ret["wfModules"] = {
-                    str(wfm.id): WfModuleSerializer(wfm).data for wfm in wf_modules
+                    str(wfm.id): WfModuleSerializer(
+                        wfm, context={"locale_id": request.locale_id}
+                    ).data
+                    for wfm in wf_modules
                 }
                 workflow.last_viewed_at = timezone.now()
                 workflow.save(update_fields=["last_viewed_at"])
