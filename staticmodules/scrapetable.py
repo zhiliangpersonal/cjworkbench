@@ -3,6 +3,7 @@ import aiohttp
 import pandas as pd
 from cjwkernel.pandas.types import ProcessResult
 from cjwkernel.pandas import moduleutils
+from cjwkernel.pandas.types import _coerce_to_process_result_error
 
 
 def merge_colspan_headers_in_place(table) -> None:
@@ -77,7 +78,9 @@ async def fetch(params):
     tablenum: int = params["tablenum"] - 1  # 1-based for user
 
     if tablenum < 0:
-        return ProcessResult(error="Table number must be at least 1")
+        return ProcessResult(
+            errors=_coerce_to_process_result_error("Table number must be at least 1")
+        )
 
     result = None
 
@@ -107,27 +110,43 @@ async def fetch(params):
                     dtype=str,  # do not autoconvert
                 )
     except asyncio.TimeoutError:
-        return ProcessResult(error=f"Timeout fetching {url}")
+        return ProcessResult(
+            errors=_coerce_to_process_result_error(f"Timeout fetching {url}")
+        )
     except aiohttp.InvalidURL:
-        return ProcessResult(error=f"Invalid URL")
+        return ProcessResult(errors=_coerce_to_process_result_error(f"Invalid URL"))
     except aiohttp.ClientResponseError as err:
         return ProcessResult(
-            error=("Error from server: %d %s" % (err.status, err.message))
+            errors=_coerce_to_process_result_error(
+                "Error from server: %d %s" % (err.status, err.message)
+            )
         )
     except aiohttp.ClientError as err:
-        return ProcessResult(error=str(err))
+        return ProcessResult(errors=_coerce_to_process_result_error(str(err)))
     except ValueError:
-        return ProcessResult(error="Did not find any <table> tags on that page")
+        return ProcessResult(
+            errors=_coerce_to_process_result_error(
+                "Did not find any <table> tags on that page"
+            )
+        )
     except IndexError:
         # pandas.read_html() gives this unhelpful error message....
-        return ProcessResult(error="Table has no columns")
+        return ProcessResult(
+            errors=_coerce_to_process_result_error("Table has no columns")
+        )
 
     if not tables:
-        return ProcessResult(error="Did not find any <table> tags on that page")
+        return ProcessResult(
+            errors=_coerce_to_process_result_error(
+                "Did not find any <table> tags on that page"
+            )
+        )
 
     if tablenum >= len(tables):
         return ProcessResult(
-            error=(f"The maximum table number on this page is {len(tables)}")
+            errors=_coerce_to_process_result_error(
+                f"The maximum table number on this page is {len(tables)}"
+            )
         )
 
     # pd.read_html() guarantees unique colnames
