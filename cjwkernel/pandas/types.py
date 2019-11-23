@@ -655,7 +655,9 @@ ProcessResultError = List[Tuple[atypes.I18nMessageDict, List[QuickFix]]]
 def _coerce_to_process_result_error(
     value: ModuleError, can_nest: bool = True
 ) -> ProcessResultError:
-    if isinstance(value, (str, dict)):
+    if value is "" and can_nest:
+        return []
+    elif isinstance(value, (str, dict)):
         return ProcessResult.from_error(_coerce_to_i18n_message_dict(value)).errors
     elif isinstance(value, tuple):
         if len(value) != 2:
