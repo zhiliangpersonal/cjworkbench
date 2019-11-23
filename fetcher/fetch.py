@@ -11,7 +11,14 @@ from django.db import DatabaseError, InterfaceError
 from django.utils import timezone
 from cjwkernel.chroot import EDITABLE_CHROOT, ChrootContext
 from cjwkernel.errors import ModuleError, format_for_user_debugging
-from cjwkernel.types import FetchResult, I18nMessage, Params, RenderError, TableMetadata
+from cjwkernel.types import (
+    FetchResult,
+    I18nMessage,
+    make_i18nMessage,
+    Params,
+    RenderError,
+    TableMetadata,
+)
 from cjworkbench.sync import database_sync_to_async
 from cjwstate.models import (
     CachedRenderResult,
@@ -105,10 +112,11 @@ def user_visible_bug_fetch_result(output_path: Path, message: str) -> FetchResul
         path=output_path,  # empty
         errors=[
             RenderError(
-                I18nMessage.TODO_i18n(
+                make_i18nMessage(
+                    "py.fetcher.fetch.user_visible_bug_fetch_result",
                     "Something unexpected happened. We have been notified and are "
-                    "working to fix it. If this persists, contact us. Error code: "
-                    + message
+                    "working to fix it. If this persists, contact us. Error code: {message}",
+                    {"message": message},
                 )
             )
         ],
@@ -210,7 +218,14 @@ def fetch_or_wrap_error(
         logger.info("fetch() deleted module '%s'", wf_module.module_id_name)
         return FetchResult(
             output_path,
-            [RenderError(I18nMessage.TODO_i18n("Cannot fetch: module was deleted"))],
+            [
+                RenderError(
+                    make_i18nMessage(
+                        "py.fetcher.fetch.fetch_or_wrap_error.noLoadedModule",
+                        "Cannot fetch: module was deleted",
+                    )
+                )
+            ],
         )
 
     # Migrate params, so fetch() gets newest values

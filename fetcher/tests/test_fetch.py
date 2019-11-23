@@ -34,6 +34,7 @@ from cjwstate.modules.loaded_module import LoadedModule
 from cjwstate.tests.utils import DbTestCase
 from fetcher import fetch, fetchprep, save
 from server import websockets
+from typing import Union
 
 
 def async_value(v):
@@ -173,15 +174,23 @@ class FetchOrWrapErrorTests(unittest.TestCase):
         self.ctx.close()
         super().tearDown()
 
-    def _err(self, message: str) -> FetchResult:
+    def _err(self, message: Union[str, I18nMessage]) -> FetchResult:
         return FetchResult(
-            self.output_path, [RenderError(I18nMessage.TODO_i18n(message))]
+            self.output_path,
+            [
+                RenderError(
+                    message
+                    if isinstance(message, I18nMessage)
+                    else I18nMessage.TODO_i18n(message)
+                )
+            ],
         )
 
     def _bug_err(self, message: str) -> FetchResult:
         return self._err(
-            "Something unexpected happened. We have been notified and are "
-            "working to fix it. If this persists, contact us. Error code: " + message
+            I18nMessage(
+                "py.fetcher.fetch.user_visible_bug_fetch_result", {"message": message}
+            )
         )
 
     def test_deleted_wf_module(self):
@@ -198,7 +207,12 @@ class FetchOrWrapErrorTests(unittest.TestCase):
                 self.output_path,
             )
         self.assertEqual(self.output_path.stat().st_size, 0)
-        self.assertEqual(result, self._err("Cannot fetch: module was deleted"))
+        self.assertEqual(
+            result,
+            self._err(
+                I18nMessage("py.fetcher.fetch.fetch_or_wrap_error.noLoadedModule", {})
+            ),
+        )
 
     @patch.object(LoadedModule, "for_module_version")
     def test_load_module_missing(self, load_module):
