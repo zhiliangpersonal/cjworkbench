@@ -1,7 +1,7 @@
 import unittest
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from cjwkernel.pandas.types import ProcessResult
+from cjwkernel.pandas.types import ProcessResult, _coerce_to_process_result_error
 from staticmodules import editcells
 
 
@@ -13,9 +13,9 @@ def test_render(in_table, patch_json, out_table=pd.DataFrame(), out_error=""):
     result = editcells.render(in_table, P(celledits=patch_json))
     result = ProcessResult.coerce(result)
 
-    expected = ProcessResult(out_table, out_error)
+    expected = ProcessResult(out_table, _coerce_to_process_result_error(out_error))
 
-    assert result.error == expected.error
+    assert result.errors == expected.errors
     assert_frame_equal(result.dataframe, expected.dataframe)
 
 

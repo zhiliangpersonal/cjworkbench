@@ -3,7 +3,7 @@ from typing import Any, Dict
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
-from cjwkernel.pandas.types import ProcessResult
+from cjwkernel.pandas.types import ProcessResult, _coerce_to_process_result_error
 from staticmodules import formula
 from staticmodules.formula import build_globals_for_eval, sanitize_series
 from .util import MockParams
@@ -179,9 +179,11 @@ class FormulaTests(unittest.TestCase):
         expected_error: str = "",
     ):
         result = ProcessResult.coerce(formula.render(table, P(**params)))
-        expected = ProcessResult(expected_table, expected_error)
+        expected = ProcessResult(
+            expected_table, _coerce_to_process_result_error(expected_error)
+        )
 
-        self.assertEqual(result.error, expected.error)
+        self.assertEqual(result.errors, expected.errors)
         assert_frame_equal(result.dataframe, expected.dataframe)
 
     def test_python_formula_int_output(self):
