@@ -812,6 +812,13 @@ class RenderError:
             "quickFixes": [qf.to_dict() for qf in self.quick_fixes],
         }
 
+    def to_pandas_error(self):
+        return (
+            (self.message.to_dict(), [qf.to_dict() for qf in self.quick_fixes])
+            if self.quick_fixes
+            else self.message.to_dict()
+        )
+
 
 @dataclass(frozen=True)
 class FetchResult:

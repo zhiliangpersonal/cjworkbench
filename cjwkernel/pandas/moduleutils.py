@@ -9,7 +9,7 @@ import pandas as pd
 from pandas.api.types import is_numeric_dtype, is_datetime64_dtype
 import yarl  # aiohttp innards -- yuck!
 from cjwkernel.util import tempfile_context
-from cjwkernel.pandas.types import ProcessResult
+from cjwkernel.pandas.types import ProcessResult, _coerce_to_process_result_error
 
 
 _TextEncoding = Optional[str]
@@ -72,13 +72,13 @@ def _safe_parse(
     try:
         return ProcessResult.coerce(parser(bytesio))
     except BadInput as err:
-        return ProcessResult(error=str(err))
+        return ProcessResult.coerce(str(err))
     except json.decoder.JSONDecodeError as err:
-        return ProcessResult(error=str(err))
+        return ProcessResult.coerce(str(err))
     except pd.errors.EmptyDataError:
         return ProcessResult()
     except pd.errors.ParserError as err:
-        return ProcessResult(error=str(err))
+        return ProcessResult.coerce(str(err))
 
 
 @contextmanager

@@ -323,8 +323,7 @@ class ProcessResultErrorCoercing(unittest.TestCase):
         )
 
     def test_from_empty_list(self):
-        with self.assertRaises(ValueError):
-            _coerce_to_process_result_error([])
+        self.assertEqual(_coerce_to_process_result_error([]), [])
 
     def test_from_list_of_string(self):
         self.assertEqual(

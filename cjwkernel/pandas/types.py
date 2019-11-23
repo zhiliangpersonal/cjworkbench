@@ -655,7 +655,7 @@ ProcessResultError = List[Tuple[atypes.I18nMessageDict, List[QuickFix]]]
 def _coerce_to_process_result_error(
     value: ModuleError, can_nest: bool = True
 ) -> ProcessResultError:
-    if value is "" and can_nest:
+    if not value and can_nest:
         return []
     elif isinstance(value, (str, dict)):
         return ProcessResult.from_error(_coerce_to_i18n_message_dict(value)).errors
@@ -665,8 +665,6 @@ def _coerce_to_process_result_error(
 
         return [(_coerce_to_i18n_message_dict(value[0]), [QuickFix.coerce(value[1])])]
     elif (isinstance(value, list)) and can_nest:
-        if not value:
-            raise ValueError("For no errors, use None instead of []")
         try:
             # collect the results for each item in a single list of tuples
             return list(

@@ -100,7 +100,9 @@ def render_arrow(
         fetched_table = __parquet_to_pandas(fetch_result.path)
         pandas_fetch_result = ptypes.ProcessResult(
             fetched_table,
-            error=("" if not fetch_result.errors else str(fetch_result.errors)),
+            errors=ptypes._coerce_to_process_result_error(
+                [error.to_pandas_error() for error in fetch_result.errors]
+            ),
         )
     else:
         pandas_fetch_result = None
