@@ -10,7 +10,7 @@ import pandas as pd
 from yarl import URL
 from staticmodules.googlesheets import fetch, render, migrate_params
 from .util import MockParams
-from cjwkernel.pandas.types import ProcessResult
+from cjwkernel.pandas.types import ProcessResult, _coerce_to_process_result_error
 from cjwkernel.tests.pandas.util import assert_process_result_equal
 
 expected_table = pd.DataFrame({"foo": [1, 2], "bar": [2, 3]})
@@ -243,13 +243,21 @@ class RenderTests(unittest.TestCase):
 
     def test_render_fetch_error(self):
         result = render(
-            pd.DataFrame(), P(), fetch_result=ProcessResult(error="please log in")
+            pd.DataFrame(),
+            P(),
+            fetch_result=ProcessResult(
+                errors=_coerce_to_process_result_error("please log in")
+            ),
         )
         assert_process_result_equal(result, "please log in")
 
     def test_render_fetch_warning(self):
         result = render(
-            pd.DataFrame(), P(), fetch_result=ProcessResult(expected_table, "truncated")
+            pd.DataFrame(),
+            P(),
+            fetch_result=ProcessResult(
+                expected_table, _coerce_to_process_result_error("truncated")
+            ),
         )
         assert_process_result_equal(result, (expected_table, "truncated"))
 

@@ -8,7 +8,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 import pandas as pd
-from cjwkernel.pandas.types import ProcessResult
+from cjwkernel.pandas.types import ProcessResult, _coerce_to_process_result_error
 from cjwkernel.util import tempfile_context
 from cjwkernel.tests.pandas.util import assert_process_result_equal
 from cjwkernel.types import FetchResult
@@ -270,7 +270,11 @@ class RenderTests(unittest.TestCase):
         assert_process_result_equal(result, pd.DataFrame({"0": ["A", "1", "2"]}))
 
     def test_render_error_process_result(self):
-        result = render(pd.DataFrame(), P(), fetch_result=ProcessResult(error="hi"))
+        result = render(
+            pd.DataFrame(),
+            P(),
+            fetch_result=ProcessResult(errors=_coerce_to_process_result_error("hi")),
+        )
         assert_process_result_equal(result, "hi")
 
     def test_render_empty_process_result(self):

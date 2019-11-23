@@ -7,7 +7,7 @@ import aiohttp.client
 from asgiref.sync import async_to_sync
 import pandas as pd
 from pandas.testing import assert_frame_equal
-from cjwkernel.pandas.types import ProcessResult
+from cjwkernel.pandas.types import ProcessResult, _coerce_to_process_result_error
 from staticmodules import scrapetable
 from .util import MockParams
 
@@ -106,7 +106,12 @@ class ScrapeTableTest(unittest.TestCase):
         url = "http:INVALID:URL"  # we should never even validate the URL
         fetch_result = fetch(url=url, tablenum=0)
         self.assertEqual(
-            fetch_result, ProcessResult(error="Table number must be at least 1")
+            fetch_result,
+            ProcessResult(
+                errors=_coerce_to_process_result_error(
+                    "Table number must be at least 1"
+                )
+            ),
         )
 
     @patch(
@@ -117,7 +122,11 @@ class ScrapeTableTest(unittest.TestCase):
         fetch_result = fetch(url="http://example.org", tablenum=2)
         self.assertEqual(
             fetch_result,
-            ProcessResult(error="The maximum table number on this page is 1"),
+            ProcessResult(
+                errors=_coerce_to_process_result_error(
+                    "The maximum table number on this page is 1"
+                )
+            ),
         )
 
     @patch(
@@ -171,7 +180,12 @@ class ScrapeTableTest(unittest.TestCase):
         fetch_result = fetch(url="http://example.org")
 
         self.assertEqual(
-            fetch_result, ProcessResult(error="Error from server: 500 Server Error")
+            fetch_result,
+            ProcessResult(
+                errors=_coerce_to_process_result_error(
+                    "Error from server: 500 Server Error"
+                )
+            ),
         )
 
     @patch(
@@ -185,7 +199,11 @@ class ScrapeTableTest(unittest.TestCase):
 
         self.assertEqual(
             fetch_result,
-            ProcessResult(error="Did not find any <table> tags on that page"),
+            ProcessResult(
+                errors=_coerce_to_process_result_error(
+                    "Did not find any <table> tags on that page"
+                )
+            ),
         )
 
     @patch(
@@ -207,7 +225,12 @@ class ScrapeTableTest(unittest.TestCase):
     def test_404(self):
         fetch_result = fetch(url="http://example.org")
         self.assertEqual(
-            fetch_result, ProcessResult(error="Error from server: 404 Not Found")
+            fetch_result,
+            ProcessResult(
+                errors=_coerce_to_process_result_error(
+                    "Error from server: 404 Not Found"
+                )
+            ),
         )
 
     @patch(
