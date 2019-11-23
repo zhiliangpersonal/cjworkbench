@@ -21,7 +21,7 @@ class TransTemplateTagTests(SimpleTestCase):
     # 1) Parameters that do not exist in the message are ignored.
     # 2) Variables in the message for which no parameter has been given are ignored.
     # 3) The order of `arg` arguments is not important.
-    # 4) When the programmer tries to use numeric arguments, an exception is raised (behaviour for when the translator tries to use numeric arguments is tested elsewhere)
+    # 4) A programmer can include a numeric variable in the message
     def test_trans_params(self):
         self.assertEqual(
             trans_html(
@@ -35,7 +35,7 @@ class TransTemplateTagTests(SimpleTestCase):
             "Hello you there {c}!",
         )
 
-        with self.assertRaises(Exception):
+        self.assertEqual(
             trans_html(
                 mock_context(),
                 mock_message_id,
@@ -44,6 +44,8 @@ class TransTemplateTagTests(SimpleTestCase):
                 arg_0="!",
                 arg_b="2",
             ),
+            "Hello you ! 2",
+        )
 
     # Tests the combination of properties of placeholder tags and of message parameters.
     # 0) In settings where there are multiple tags, some of which have to be deleted, all of them are processed
