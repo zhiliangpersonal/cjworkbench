@@ -628,6 +628,26 @@ msgstr "{years}y ago"
 msgid "js.util.timeDifference.now"
 msgstr "just now"
 
+#: cjwkernel/pandas/types.py:759
+msgid "py.cjwkernel.pandas.types.ProcessResult.truncate_in_place_if_too_big.warning"
+msgstr "Truncated output from {old_number} rows to {new_number}"
+
+#: cjwkernel/pandas/types.py:929 cjwkernel/pandas/types.py:964
+msgid "py.cjwkernel.pandas.types.ProcessResult.wrongReturnType"
+msgstr ""
+"There is a bug in this module: expected {expected_type} return type, got "
+"{type}"
+
+#: cjwkernel/pandas/types.py:979
+msgid "py.cjwkernel.pandas.types.ProcessResult.gotBigTuple"
+msgstr ""
+"There is a bug in this module: expected 2-tuple or 3-tuple return value; "
+"got {length}-tuple"
+
+#: cjwkernel/pandas/types.py:992
+msgid "py.cjwkernel.pandas.types.ProcessResult.invalidReturnType"
+msgstr "There is a bug in this module: invalid return type {type}"
+
 #: cjworkbench/forms/signup.py:24
 msgid "py.forms.signup.firstName.placeholder"
 msgstr "First name"
@@ -635,6 +655,36 @@ msgstr "First name"
 #: cjworkbench/forms/signup.py:31
 msgid "py.forms.signup.lastName.placeholder"
 msgstr "Last name"
+
+#: fetcher/fetch.py:115
+msgid "py.fetcher.fetch.user_visible_bug_fetch_result"
+msgstr ""
+"Something unexpected happened. We have been notified and are working to "
+"fix it. If this persists, contact us. Error code: {message}"
+
+#: fetcher/fetch.py:223
+msgid "py.fetcher.fetch.fetch_or_wrap_error.noLoadedModule"
+msgstr "Cannot fetch: module was deleted"
+
+#: fetcher/secrets.py:15
+msgid "py.fetcher.secrets._service_no_longer_configured_error"
+msgstr "Service {service} is no longer configured"
+
+#: fetcher/secrets.py:170
+msgid "py.fetcher.secrets._refresh_oauth2_token.oauth_error"
+msgstr "Token server responded with {status_number}: {error} ({description})"
+
+#: fetcher/secrets.py:177
+msgid "py.fetcher.secrets._refresh_oauth2_token.server_error"
+msgstr "{service_id} responded with HTTP {status_number} {error}: {description}"
+
+#: fetcher/secrets.py:194
+msgid "py.fetcher.secrets._refresh_oauth2_token.timeout_error"
+msgstr "Timeout during OAuth2 token refresh"
+
+#: fetcher/secrets.py:204
+msgid "py.fetcher.secrets._refresh_oauth2_token.client_error"
+msgstr "HTTP error during OAuth2 token refresh: {error}"
 
 #. i18n: The parameter {columns} will contain the total number of columns that
 #. need to be converted; you will also receive the column names as {0}, {1},

@@ -745,6 +745,26 @@ msgstr ""
 msgid "js.util.timeDifference.now"
 msgstr ""
 
+#. default-message: Truncated output from {old_number} rows to {new_number}
+#: cjwkernel/pandas/types.py:759
+msgid "py.cjwkernel.pandas.types.ProcessResult.truncate_in_place_if_too_big.warning"
+msgstr ""
+
+#. default-message: There is a bug in this module: expected {expected_type} return type, got {type}
+#: cjwkernel/pandas/types.py:929 cjwkernel/pandas/types.py:964
+msgid "py.cjwkernel.pandas.types.ProcessResult.wrongReturnType"
+msgstr ""
+
+#. default-message: There is a bug in this module: expected 2-tuple or 3-tuple return value; got {length}-tuple
+#: cjwkernel/pandas/types.py:979
+msgid "py.cjwkernel.pandas.types.ProcessResult.gotBigTuple"
+msgstr ""
+
+#. default-message: There is a bug in this module: invalid return type {type}
+#: cjwkernel/pandas/types.py:992
+msgid "py.cjwkernel.pandas.types.ProcessResult.invalidReturnType"
+msgstr ""
+
 #. default-message: First name
 #: cjworkbench/forms/signup.py:24
 msgid "py.forms.signup.firstName.placeholder"
@@ -753,6 +773,41 @@ msgstr ""
 #. default-message: Last name
 #: cjworkbench/forms/signup.py:31
 msgid "py.forms.signup.lastName.placeholder"
+msgstr ""
+
+#. default-message: Something unexpected happened. We have been notified and are working to fix it. If this persists, contact us. Error code: {message}
+#: fetcher/fetch.py:115
+msgid "py.fetcher.fetch.user_visible_bug_fetch_result"
+msgstr ""
+
+#. default-message: Cannot fetch: module was deleted
+#: fetcher/fetch.py:223
+msgid "py.fetcher.fetch.fetch_or_wrap_error.noLoadedModule"
+msgstr ""
+
+#. default-message: Service {service} is no longer configured
+#: fetcher/secrets.py:15
+msgid "py.fetcher.secrets._service_no_longer_configured_error"
+msgstr ""
+
+#. default-message: Token server responded with {status_number}: {error} ({description})
+#: fetcher/secrets.py:170
+msgid "py.fetcher.secrets._refresh_oauth2_token.oauth_error"
+msgstr ""
+
+#. default-message: {service_id} responded with HTTP {status_number} {error}: {description}
+#: fetcher/secrets.py:177
+msgid "py.fetcher.secrets._refresh_oauth2_token.server_error"
+msgstr ""
+
+#. default-message: Timeout during OAuth2 token refresh
+#: fetcher/secrets.py:194
+msgid "py.fetcher.secrets._refresh_oauth2_token.timeout_error"
+msgstr ""
+
+#. default-message: HTTP error during OAuth2 token refresh: {error}
+#: fetcher/secrets.py:204
+msgid "py.fetcher.secrets._refresh_oauth2_token.client_error"
 msgstr ""
 
 #. i18n: The parameter {columns} will contain the total number of columns that
