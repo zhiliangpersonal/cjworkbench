@@ -15,6 +15,7 @@ import pyarrow
 from .validate import validate_dataframe
 from .. import settings, types as atypes
 from itertools import chain
+from cjworkbench.i18n import default_locale
 
 make_i18nMessage = atypes.make_i18nMessage
 
@@ -784,6 +785,17 @@ class ProcessResult:
                 return "unreachable"
         else:
             return "ok"
+
+    @property
+    def error(self) -> str:
+        """
+        For backwards compatibility
+        """
+        return (
+            atypes.translate_i18n_message(self.errors[0][0], default_locale)
+            if self.errors
+            else ""
+        )
 
     @property
     def column_names(self):

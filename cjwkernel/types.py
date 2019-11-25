@@ -10,6 +10,8 @@ import pyarrow.types
 from string import Formatter
 from typing import Any, Dict, List, Optional, Union
 from cjwkernel.util import json_encode
+from cjworkbench.i18n.trans import trans_html
+from cjworkbench.i18n import default_locale
 
 # Some types we can import with no conversion
 from .thrift import ttypes
@@ -572,6 +574,29 @@ def make_i18nMessage(
     but will be added to the message catalog of the default locale when parsing the code.
     """
     return I18nMessage(message_id, args)
+
+
+def translate_i18n_message(
+    message: Union[I18nMessage, I18nMessageDict], locale_id: str
+) -> str:
+    if isinstance(message, I18nMessage):
+        if message.id == "TODO_i18n":
+            return message.args["text"]
+        else:
+            default_message = (
+                message.id
+                if locale_id == default_locale
+                else trans_html(
+                    default_locale, message.id, default=None, parameters=message.args
+                )
+            )
+            return trans_html(
+                locale_id, message.id, default=default_message, parameters=message.args
+            )
+    elif isinstance(message, dict):
+        return translate_i18n_message(I18nMessage.from_dict(message), locale_id)
+    else:
+        raise TypeError("The message given is not an I18nMessage: %s" % message)
 
 
 ParamValue = Optional[

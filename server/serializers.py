@@ -9,9 +9,8 @@ from cjwstate.models import Workflow, WfModule, ModuleVersion, StoredObject, Tab
 from cjwstate.params import get_migrated_params
 from server.settingsutils import workbench_user_display
 from cjwstate.models.param_spec import ParamSpec
-from cjwkernel.types import I18nMessage, I18nMessageDict
+from cjwkernel.types import I18nMessage, I18nMessageDict, translate_i18n_message
 from cjworkbench.i18n import default_locale
-from cjworkbench.i18n.trans import trans_html
 
 
 User = get_user_model()
@@ -244,27 +243,6 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("email", "display_name", "id", "is_staff")
-
-
-def translate_i18n_message(
-    message: Union[I18nMessage, I18nMessageDict], locale_id: str
-) -> str:
-    if isinstance(message, I18nMessage):
-        if message.id == "TODO_i18n":
-            return message.args["text"]
-        else:
-            default_message = (
-                message.id
-                if locale_id == default_locale
-                else trans_html(
-                    default_locale, message.id, default=None, parameters=message.args
-                )
-            )
-            return trans_html(
-                locale_id, message.id, default=default_message, parameters=message.args
-            )
-    if isinstance(message, dict):
-        return translate_i18n_message(I18nMessage.from_dict(message), locale_id)
 
 
 class WfModuleSerializer(serializers.ModelSerializer):
