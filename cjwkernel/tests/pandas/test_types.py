@@ -225,23 +225,17 @@ class I18nMessageDictCoercing(unittest.TestCase):
             atypes.I18nMessage.TODO_i18n("some string").to_dict(),
         )
 
-    def test_from_dict(self):
+    def test_from_tuple(self):
         self.assertEqual(
-            _coerce_to_i18n_message_dict(
-                {"id": "my_id", "arguments": {"hello": "there"}}
-            ),
+            _coerce_to_i18n_message_dict(("my_id", {"hello": "there"})),
             atypes.I18nMessage("my_id", {"hello": "there"}).to_dict(),
         )
 
-    def test_from_dict_without_arguments(self):
-        self.assertEqual(
-            _coerce_to_i18n_message_dict({"id": "my_id"}),
-            atypes.I18nMessage("my_id", {}).to_dict(),
-        )
-
-    def test_from_dict_without_id(self):
-        with self.assertRaises(ValueError):
-            _coerce_to_i18n_message_dict({"arguments": {"hello": "there"}})
+    def test_from_dict(self):
+        with self.assertRaises(TypeError):
+            _coerce_to_i18n_message_dict(
+                {"id": "my_id", "arguments": {"hello": "there"}}
+            )
 
 
 class ProcessResultErrorCoercing(unittest.TestCase):
@@ -251,35 +245,31 @@ class ProcessResultErrorCoercing(unittest.TestCase):
             [(atypes.I18nMessage.TODO_i18n("some string").to_dict(), [])],
         )
 
-    def test_from_dict(self):
+    def test_from_message_tuple(self):
         self.assertEqual(
-            _coerce_to_process_result_error(
-                {"id": "my_id", "arguments": {"hello": "there"}}
-            ),
+            _coerce_to_process_result_error(("my_id", {"hello": "there"})),
             [(atypes.I18nMessage("my_id", {"hello": "there"}).to_dict(), [])],
         )
 
-    def test_from_dict_without_arguments(self):
-        self.assertEqual(
-            _coerce_to_process_result_error({"id": "my_id"}),
-            [(atypes.I18nMessage("my_id", {}).to_dict(), [])],
-        )
-
-    def test_from_dict_without_id(self):
-        with self.assertRaises((TypeError, ValueError)):
-            _coerce_to_process_result_error({"arguments": {"hello": "there"}})
+    def test_from_dict(self):
+        with self.assertRaises(ValueError):
+            _coerce_to_process_result_error(
+                {"id": "my_id", "arguments": {"hello": "there"}}
+            )
 
     def test_from_string_with_quick_fix(self):
         self.assertEqual(
             _coerce_to_process_result_error(
-                (
-                    "error",
-                    (
-                        "button text",
-                        "prependModule",
-                        ["converttotext", {"colnames": ["A", "B"]}],
-                    ),
-                )
+                {
+                    "message": "error",
+                    "quickFixes": [
+                        (
+                            "button text",
+                            "prependModule",
+                            ["converttotext", {"colnames": ["A", "B"]}],
+                        )
+                    ],
+                }
             ),
             [
                 (
@@ -295,18 +285,24 @@ class ProcessResultErrorCoercing(unittest.TestCase):
             ],
         )
 
-    def test_from_dict_with_quick_fixes(self):
-        # TODO: support multiple quick fixes per error
+    def test_from_tuple_with_quick_fixes(self):
         self.assertEqual(
             _coerce_to_process_result_error(
-                (
-                    {"id": "my id"},
-                    (
-                        "button text",
-                        "prependModule",
-                        ["converttotext", {"colnames": ["A", "B"]}],
-                    ),
-                )
+                {
+                    "message": ("my id", {}),
+                    "quickFixes": [
+                        (
+                            "button text",
+                            "prependModule",
+                            ["converttotext", {"colnames": ["A", "B"]}],
+                        ),
+                        (
+                            ("other button text id", {}),
+                            "prependModule",
+                            ["converttonumber", {"colnames": ["C", "D"]}],
+                        ),
+                    ],
+                }
             ),
             [
                 (
@@ -316,7 +312,12 @@ class ProcessResultErrorCoercing(unittest.TestCase):
                             atypes.I18nMessage.TODO_i18n("button text").to_dict(),
                             "prependModule",
                             [["converttotext", {"colnames": ["A", "B"]}]],
-                        )
+                        ),
+                        QuickFix(
+                            atypes.I18nMessage("other button text id", {}).to_dict(),
+                            "prependModule",
+                            [["converttonumber", {"colnames": ["C", "D"]}]],
+                        ),
                     ],
                 )
             ],
@@ -331,14 +332,10 @@ class ProcessResultErrorCoercing(unittest.TestCase):
             [(atypes.I18nMessage.TODO_i18n("error").to_dict(), [])],
         )
 
-    def test_from_list_of_string_and_dict(self):
+    def test_from_list_of_string_and_tuples(self):
         self.assertEqual(
             _coerce_to_process_result_error(
-                [
-                    "error",
-                    {"id": "my_id"},
-                    {"id": "my_other_id", "arguments": {"this": "one"}},
-                ]
+                ["error", ("my_id", {}), ("my_other_id", {"this": "one"})]
             ),
             [
                 (atypes.I18nMessage.TODO_i18n("error").to_dict(), []),
@@ -348,26 +345,34 @@ class ProcessResultErrorCoercing(unittest.TestCase):
         )
 
     def test_from_list_with_quick_fixes(self):
-        # TODO: support multiple quick fixes per error
         self.assertEqual(
             _coerce_to_process_result_error(
                 [
-                    (
-                        {"id": "my id"},
-                        (
-                            "button text",
-                            "prependModule",
-                            ["converttotext", {"colnames": ["A", "B"]}],
-                        ),
-                    ),
-                    (
-                        {"id": "my other id", "arguments": {"other": "this"}},
-                        (
-                            {"id": "quick fix id", "arguments": {"fix": "that"}},
-                            "prependModule",
-                            ["converttodate", {"colnames": ["C", "D"]}],
-                        ),
-                    ),
+                    {
+                        "message": ("my id", {}),
+                        "quickFixes": [
+                            (
+                                "button text",
+                                "prependModule",
+                                ["converttotext", {"colnames": ["A", "B"]}],
+                            )
+                        ],
+                    },
+                    {
+                        "message": ("my other id", {"other": "this"}),
+                        "quickFixes": [
+                            (
+                                ("quick fix id", {"fix": "that"}),
+                                "prependModule",
+                                ["converttodate", {"colnames": ["C", "D"]}],
+                            ),
+                            (
+                                ("another quick fix id", {"fix": "that"}),
+                                "prependModule",
+                                ["converttonumber", {"colnames": ["E", "F"]}],
+                            ),
+                        ],
+                    },
                 ]
             ),
             [
@@ -390,7 +395,14 @@ class ProcessResultErrorCoercing(unittest.TestCase):
                             ).to_dict(),
                             "prependModule",
                             [["converttodate", {"colnames": ["C", "D"]}]],
-                        )
+                        ),
+                        QuickFix(
+                            atypes.I18nMessage(
+                                "another quick fix id", {"fix": "that"}
+                            ).to_dict(),
+                            "prependModule",
+                            [["converttonumber", {"colnames": ["E", "F"]}]],
+                        ),
                     ],
                 ),
             ],
@@ -398,7 +410,7 @@ class ProcessResultErrorCoercing(unittest.TestCase):
 
     def test_from_list_of_lists(self):
         with self.assertRaises(ValueError):
-            _coerce_to_process_result_error([[{"id": "hello"}]])
+            _coerce_to_process_result_error([["hello"]])
 
 
 class QuickFixTests(unittest.TestCase):

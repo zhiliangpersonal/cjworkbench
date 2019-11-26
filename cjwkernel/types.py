@@ -839,9 +839,12 @@ class RenderError:
 
     def to_pandas_error(self):
         return (
-            (self.message.to_dict(), [qf.to_dict() for qf in self.quick_fixes])
+            {
+                "message": (self.message.id, self.message.args),
+                "quickFixes": [qf.to_dict() for qf in self.quick_fixes],
+            }
             if self.quick_fixes
-            else self.message.to_dict()
+            else (self.message.id, self.message.args)
         )
 
 

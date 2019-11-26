@@ -618,21 +618,20 @@ msgstr ""
 msgid "js.util.timeDifference.now"
 msgstr ""
 
-#: cjwkernel/pandas/types.py:759
+#: cjwkernel/pandas/types.py:701
+msgid "py.cjwkernel.pandas.types._wrong_process_result_types_message"
+msgstr ""
+""
+
+#: cjwkernel/pandas/types.py:783
 msgid "py.cjwkernel.pandas.types.ProcessResult.truncate_in_place_if_too_big.warning"
 msgstr ""
 
-#: cjwkernel/pandas/types.py:929 cjwkernel/pandas/types.py:964
-msgid "py.cjwkernel.pandas.types.ProcessResult.wrongReturnType"
-msgstr ""
-""
-
-#: cjwkernel/pandas/types.py:979
+#: cjwkernel/pandas/types.py:1014
 msgid "py.cjwkernel.pandas.types.ProcessResult.gotBigTuple"
 msgstr ""
-""
 
-#: cjwkernel/pandas/types.py:992
+#: cjwkernel/pandas/types.py:1027
 msgid "py.cjwkernel.pandas.types.ProcessResult.invalidReturnType"
 msgstr ""
 
@@ -647,7 +646,6 @@ msgstr ""
 #: fetcher/fetch.py:115
 msgid "py.fetcher.fetch.user_visible_bug_fetch_result"
 msgstr ""
-""
 
 #: fetcher/fetch.py:223
 msgid "py.fetcher.fetch.fetch_or_wrap_error.noLoadedModule"

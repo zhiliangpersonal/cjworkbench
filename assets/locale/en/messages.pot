@@ -745,23 +745,23 @@ msgstr ""
 msgid "js.util.timeDifference.now"
 msgstr ""
 
+#. default-message: There is a bug in this module: expected {expected_type} return type, got {type}
+#: cjwkernel/pandas/types.py:701
+msgid "py.cjwkernel.pandas.types._wrong_process_result_types_message"
+msgstr ""
+
 #. default-message: Truncated output from {old_number} rows to {new_number}
-#: cjwkernel/pandas/types.py:759
+#: cjwkernel/pandas/types.py:783
 msgid "py.cjwkernel.pandas.types.ProcessResult.truncate_in_place_if_too_big.warning"
 msgstr ""
 
-#. default-message: There is a bug in this module: expected {expected_type} return type, got {type}
-#: cjwkernel/pandas/types.py:929 cjwkernel/pandas/types.py:964
-msgid "py.cjwkernel.pandas.types.ProcessResult.wrongReturnType"
-msgstr ""
-
 #. default-message: There is a bug in this module: expected 2-tuple or 3-tuple return value; got {length}-tuple
-#: cjwkernel/pandas/types.py:979
+#: cjwkernel/pandas/types.py:1014
 msgid "py.cjwkernel.pandas.types.ProcessResult.gotBigTuple"
 msgstr ""
 
 #. default-message: There is a bug in this module: invalid return type {type}
-#: cjwkernel/pandas/types.py:992
+#: cjwkernel/pandas/types.py:1027
 msgid "py.cjwkernel.pandas.types.ProcessResult.invalidReturnType"
 msgstr ""
 
