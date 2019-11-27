@@ -76,32 +76,13 @@ def _camelize_value(v: Any) -> Any:
         return v
 
 
-T = TypeVar("T")
-
-
-def _selectValueFromInternationalizable(
-    internationalizable: Union[T, Dict[str, T]], locale_id: str
-) -> Optional[T]:
-    if isinstance(internationalizable, dict):
-        result = (
-            internationalizable.get(locale_id)
-            or internationalizable.get("default")
-            or internationalizable.get(default_locale)
-        )
-        if result:
-            return result
-        for key in internationalizable:
-            return internationalizable[key]
-        return None
-    return internationalizable
-
-
-class InternationalizableStringField(serializers.ReadOnlyField):
-    def to_representation(self, value):
-        locale_id = self.context.get("locale_id")
-        if not locale_id:
-            raise ValueError("A locale_id is needed to serialize modules")
-        return _selectValueFromInternationalizable(value, locale_id) or ""
+def localizeModuleField(
+    key: str, locale_id: str, value_in_spec_file: Optional[str] = None
+) -> Optional[str]:
+    translation = translate_i18n_message(
+        I18nMessage(key, {}), locale_id, value_in_spec_file
+    )
+    return translation if translation != key else None
 
 
 class StoredObjectSerializer(serializers.ModelSerializer):
@@ -110,38 +91,29 @@ class StoredObjectSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class NestedDeprecatedSerializer(serializers.Serializer):
-    end_date = serializers.CharField()
-    message = InternationalizableStringField()
-
-
 class ModuleSerializer(serializers.ModelSerializer):
     param_fields = serializers.SerializerMethodField()
     help_url = serializers.SerializerMethodField()
-    name = InternationalizableStringField()
-    description = InternationalizableStringField()
-    row_action_menu_entry_title = InternationalizableStringField()
-    deprecated = NestedDeprecatedSerializer()
+    name = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+    row_action_menu_entry_title = serializers.SerializerMethodField()
+    deprecated = serializers.SerializerMethodField()
 
-    def _serialize_param(self, p):
+    def _serialize_param(self, p, trans_prefix):
         ret = _camelize_dict(p.to_dict())
         if "name" in ret:
-            ret["name"] = (
-                _selectValueFromInternationalizable(
-                    ret["name"], self.context.get("locale_id")
-                )
-                or ""
+            ret["name"] = localizeModuleField(
+                "%s.name" % trans_prefix, self.context["locale_id"], ret["name"]
             )
         if "placeholder" in ret:
-            ret["placeholder"] = (
-                _selectValueFromInternationalizable(
-                    ret["placeholder"], self.context.get("locale_id")
-                )
-                or ""
+            ret["placeholder"] = localizeModuleField(
+                "%s.placeholder" % trans_prefix,
+                self.context["locale_id"],
+                ret["placeholder"],
             )
         if ret["type"] == "string" and "default" in ret:
-            ret["default"] = _selectValueFromInternationalizable(
-                ret["default"], self.context.get("locale_id")
+            ret["default"] = localizeModuleField(
+                "%s.default" % trans_prefix, self.context["locale_id"], ret["default"]
             )
         if ret["type"] in ["menu", "radio"]:
             ret["options"] = [
@@ -149,33 +121,34 @@ class ModuleSerializer(serializers.ModelSerializer):
                 if isinstance(option, str)
                 else {
                     "value": option["value"],
-                    "label": _selectValueFromInternationalizable(
-                        option["label"], self.context.get("locale_id")
+                    "label": localizeModuleField(
+                        "%s.options.%s.label" % (trans_prefix, option["value"]),
+                        self.context["locale_id"],
+                        option["label"],
                     ),
                 }
                 for option in ret["options"]
             ]
         if ret["type"] == "secret" and ret["secretLogic"]["provider"] == "string":
-            ret["secretLogic"]["provider"][
-                "label"
-            ] = _selectValueFromInternationalizable(
-                ret["secretLogic"]["provider"]["label"], self.context.get("locale_id")
+            ret["secretLogic"]["provider"]["label"] = localizeModuleField(
+                "%s.secretLogic.provider.label" % trans_prefix,
+                self.context["locale_id"],
+                ret["secretLogic"]["provider"]["label"],
             )
-            ret["secretLogic"]["provider"][
-                "help"
-            ] = _selectValueFromInternationalizable(
-                ret["secretLogic"]["provider"]["help"], self.context.get("locale_id")
+            ret["secretLogic"]["provider"]["help"] = localizeModuleField(
+                "%s.secretLogic.provider.help" % trans_prefix,
+                self.context["locale_id"],
+                ret["secretLogic"]["provider"]["help"],
             )
-            ret["secretLogic"]["provider"][
-                "helpUrlPrompt"
-            ] = _selectValueFromInternationalizable(
+            ret["secretLogic"]["provider"]["helpUrlPrompt"] = localizeModuleField(
+                "%s.secretLogic.provider.helpUrlPrompt" % trans_prefix,
+                self.context["locale_id"],
                 ret["secretLogic"]["provider"]["helpUrlPrompt"],
-                self.context.get("locale_id"),
             )
-            ret["secretLogic"]["provider"][
-                "helpUrl"
-            ] = _selectValueFromInternationalizable(
-                ret["secretLogic"]["provider"]["helpUrl"], self.context.get("locale_id")
+            ret["secretLogic"]["provider"]["helpUrl"] = localizeModuleField(
+                "%s.secretLogic.provider.helpUrl" % trans_prefix,
+                self.context["locale_id"],
+                ret["secretLogic"]["provider"]["helpUrl"],
             )
 
         if isinstance(p, ParamSpec.List):
@@ -193,7 +166,47 @@ class ModuleSerializer(serializers.ModelSerializer):
                 childParameters: {...}
             }
         """
-        return [self._serialize_param(p) for p in obj.param_fields]
+        return [
+            self._serialize_param(
+                p, trans_prefix="modules.%s._spec.params.%s" % (obj.id_name, p.id_name)
+            )
+            for p in obj.param_fields
+        ]
+
+    def get_name(self, obj):
+        return localizeModuleField(
+            "modules.%s._spec.name" % obj.id_name, self.context["locale_id"], obj.name
+        )
+
+    def get_description(self, obj):
+        return localizeModuleField(
+            "modules.%s._spec.description" % obj.id_name,
+            self.context["locale_id"],
+            obj.description,
+        )
+
+    def get_row_action_menu_entry_title(self, obj):
+        if hasattr(obj, "row_action_menu_entry_title"):
+            return localizeModuleField(
+                "modules.%s._spec.row_action_menu_entry_title" % obj.id_name,
+                self.context["locale_id"],
+                obj.row_action_menu_entry_title,
+            )
+        else:
+            return None
+
+    def get_deprecated(self, obj):
+        if hasattr(obj, "deprecated") and obj.deprecated:
+            return {
+                "end_date": obj.deprecated["end_date"],
+                "message": localizeModuleField(
+                    "modules.%s._spec.deprecated.message" % obj.id_name,
+                    self.context["locale_id"],
+                    obj.deprecated["message"],
+                ),
+            }
+        else:
+            return None
 
     def get_help_url(self, obj):
         url_pattern = re.compile("^http(?:s?)://", re.IGNORECASE)
