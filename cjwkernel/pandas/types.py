@@ -964,7 +964,7 @@ class ProcessResult:
                     return cls(dataframe=dataframe, errors=errors)
                 else:
                     try:
-                        return _coerce_to_process_result_error(value)
+                        return cls(errors=_coerce_to_process_result_error(value))
                     except (TypeError, ValueError, KeyError):
                         return cls.from_error(
                             _wrong_process_result_types_message(
