@@ -168,7 +168,7 @@ class ModuleSerializer(serializers.ModelSerializer):
         """
         return [
             self._serialize_param(
-                p, trans_prefix="modules.%s._spec.params.%s" % (obj.id_name, p.id_name)
+                p, trans_prefix="modules.%s._spec.parameters.%s" % (obj.id_name, p.id_name)
             )
             for p in obj.param_fields
         ]
