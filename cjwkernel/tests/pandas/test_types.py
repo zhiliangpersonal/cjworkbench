@@ -587,9 +587,25 @@ class ProcessResultTests(unittest.TestCase):
         result = ProcessResult.coerce((df, "hi"))
         self.assertEqual(result, expected)
 
+    def test_coerce_tuple_dataframe_internationalized(self):
+        df = pd.DataFrame({"foo": ["bar"]})
+        expected = ProcessResult(
+            dataframe=df,
+            errors=_coerce_to_process_result_error(("message.id", {"param1": "a"})),
+        )
+        result = ProcessResult.coerce((df, ("message.id", {"param1": "a"})))
+        self.assertEqual(result, expected)
+
     def test_coerce_tuple_none_str(self):
         expected = ProcessResult(errors=_coerce_to_process_result_error("hi"))
         result = ProcessResult.coerce((None, "hi"))
+        self.assertEqual(result, expected)
+
+    def test_coerce_tuple_none_internationalized(self):
+        expected = ProcessResult(
+            errors=_coerce_to_process_result_error(("message.id", {"param1": "a"}))
+        )
+        result = ProcessResult.coerce((None, ("message.id", {"param1": "a"})))
         self.assertEqual(result, expected)
 
     def test_coerce_tuple_dataframe_str_dict(self):
@@ -600,10 +616,28 @@ class ProcessResultTests(unittest.TestCase):
         result = ProcessResult.coerce((df, "hi", {"a": "b"}))
         self.assertEqual(result, expected)
 
+    def test_coerce_tuple_dataframe_internationalized_dict(self):
+        df = pd.DataFrame({"foo": ["bar"]})
+        expected = ProcessResult(
+            df,
+            _coerce_to_process_result_error(("message.id", {"param1": "a"})),
+            json={"a": "b"},
+        )
+        result = ProcessResult.coerce((df, ("message.id", {"param1": "a"}), {"a": "b"}))
+        self.assertEqual(result, expected)
+
     def test_coerce_tuple_dataframe_str_none(self):
         df = pd.DataFrame({"foo": ["bar"]})
         expected = ProcessResult(df, _coerce_to_process_result_error("hi"))
         result = ProcessResult.coerce((df, "hi", None))
+        self.assertEqual(result, expected)
+
+    def test_coerce_tuple_dataframe_internationalized_none(self):
+        df = pd.DataFrame({"foo": ["bar"]})
+        expected = ProcessResult(
+            df, _coerce_to_process_result_error(("message.id", {"param1": "a"}))
+        )
+        result = ProcessResult.coerce((df, ("message.id", {"param1": "a"}), None))
         self.assertEqual(result, expected)
 
     def test_coerce_tuple_dataframe_none_dict(self):
@@ -625,9 +659,26 @@ class ProcessResultTests(unittest.TestCase):
         result = ProcessResult.coerce((None, "hi", {"a": "b"}))
         self.assertEqual(result, expected)
 
+    def test_coerce_tuple_none_internationalized_dict(self):
+        expected = ProcessResult(
+            errors=_coerce_to_process_result_error(("message.id", {"param1": "a"})),
+            json={"a": "b"},
+        )
+        result = ProcessResult.coerce(
+            (None, ("message.id", {"param1": "a"}), {"a": "b"})
+        )
+        self.assertEqual(result, expected)
+
     def test_coerce_tuple_none_str_none(self):
         expected = ProcessResult(errors=_coerce_to_process_result_error("hi"))
         result = ProcessResult.coerce((None, "hi", None))
+        self.assertEqual(result, expected)
+
+    def test_coerce_tuple_none_internationalized_none(self):
+        expected = ProcessResult(
+            errors=_coerce_to_process_result_error(("message.id", {"param1": "a"}))
+        )
+        result = ProcessResult.coerce((None, ("message.id", {"param1": "a"}), None))
         self.assertEqual(result, expected)
 
     def test_coerce_tuple_none_none_dict(self):
@@ -650,12 +701,24 @@ class ProcessResultTests(unittest.TestCase):
         self.assertIsNotNone(result.errors)
         self.assertTrue(result.errors)
 
+    def test_coerce_2tuple_internationalized(self):
+        expected = ProcessResult(
+            errors=_coerce_to_process_result_error(("message_id", {"param1": "a"}))
+        )
+        result = ProcessResult.coerce(("message_id", {"param1": "a"}))
+        self.assertEqual(result, expected)
+
+    def test_coerce_2tuple_bad_internationalized_error(self):
+        result = ProcessResult.coerce(("message_id", None))
+        self.assertIsNotNone(result.errors)
+        self.assertTrue(result.errors)
+
     def test_coerce_3tuple_no_dataframe(self):
         result = ProcessResult.coerce(("foo", "bar", {"a": "b"}))
         self.assertIsNotNone(result.errors)
         self.assertTrue(result.errors)
 
-    def test_coerce_dict_with_quickfix_tuple(self):
+    def test_coerce_dict_legacy_with_quickfix_tuple(self):
         dataframe = pd.DataFrame({"A": [1, 2]})
         quick_fix = QuickFix(
             atypes.I18nMessage.TODO_i18n("Hi").to_dict(),
@@ -679,7 +742,40 @@ class ProcessResultTests(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-    def test_coerce_dict_with_quickfix_tuple_not_json_serializable(self):
+    def test_coerce_dict_with_quickfix_tuple(self):
+        dataframe = pd.DataFrame({"A": [1, 2]})
+        quick_fix = QuickFix(
+            atypes.I18nMessage("message.id", {}).to_dict(),
+            "prependModule",
+            ["texttodate", {"column": "created_at"}],
+        )
+        result = ProcessResult.coerce(
+            {
+                "dataframe": dataframe,
+                "errors": [
+                    {
+                        "message": "an error",
+                        "quickFixes": [
+                            (
+                                ("message.id", {}),
+                                "prependModule",
+                                "texttodate",
+                                {"column": "created_at"},
+                            )
+                        ],
+                    }
+                ],
+                "json": {"foo": "bar"},
+            }
+        )
+        expected = ProcessResult(
+            dataframe,
+            [(atypes.I18nMessage.TODO_i18n("an error").to_dict(), [quick_fix])],
+            json={"foo": "bar"},
+        )
+        self.assertEqual(result, expected)
+
+    def test_coerce_dict_legacy_with_quickfix_tuple_not_json_serializable(self):
         dataframe = pd.DataFrame({"A": [1, 2]})
         with self.assertRaisesRegex(ValueError, "JSON serializable"):
             ProcessResult.coerce(
@@ -698,7 +794,30 @@ class ProcessResultTests(unittest.TestCase):
                 }
             )
 
-    def test_coerce_dict_with_quickfix_dict(self):
+    def test_coerce_dict_with_quickfix_tuple_not_json_serializable(self):
+        dataframe = pd.DataFrame({"A": [1, 2]})
+        with self.assertRaisesRegex(ValueError, "cannot be coerced"):
+            ProcessResult.coerce(
+                {
+                    "dataframe": dataframe,
+                    "errors": [
+                        {
+                            "message": "an error",
+                            "quickFixes": [
+                                (
+                                    "Hi",
+                                    "prependModule",
+                                    "texttodate",
+                                    {"columns": pd.Index(["created_at"])},
+                                )
+                            ],
+                        }
+                    ],
+                    "json": {"foo": "bar"},
+                }
+            )
+
+    def test_coerce_dict_legacy_with_quickfix_dict(self):
         dataframe = pd.DataFrame({"A": [1, 2]})
         quick_fix = QuickFix(
             atypes.I18nMessage.TODO_i18n("Hi").to_dict(),
@@ -726,7 +845,88 @@ class ProcessResultTests(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
-    def test_coerce_dict_bad_quickfix_dict(self):
+    def test_coerce_dict_with_quickfix_dict(self):
+        dataframe = pd.DataFrame({"A": [1, 2]})
+        quick_fix = QuickFix(
+            atypes.I18nMessage.TODO_i18n("Hi").to_dict(),
+            "prependModule",
+            ["texttodate", {"column": "created_at"}],
+        )
+        result = ProcessResult.coerce(
+            {
+                "dataframe": dataframe,
+                "errors": [
+                    {
+                        "message": "an error",
+                        "quickFixes": [
+                            {
+                                "text": "Hi",
+                                "action": "prependModule",
+                                "args": ["texttodate", {"column": "created_at"}],
+                            }
+                        ],
+                    }
+                ],
+                "json": {"foo": "bar"},
+            }
+        )
+        expected = ProcessResult(
+            dataframe,
+            errors=[(atypes.I18nMessage.TODO_i18n("an error").to_dict(), [quick_fix])],
+            json={"foo": "bar"},
+        )
+        self.assertEqual(result, expected)
+
+    def test_coerce_dict_quickfix_multiple(self):
+        dataframe = pd.DataFrame({"A": [1, 2]})
+        quick_fixes = [
+            QuickFix(
+                atypes.I18nMessage.TODO_i18n("Hi").to_dict(),
+                "prependModule",
+                ["texttodate", {"column": "created_at"}],
+            ),
+            QuickFix(
+                atypes.I18nMessage("message.id", {}).to_dict(),
+                "prependModule",
+                ["texttodate", {"column": "created_at"}],
+            ),
+        ]
+        result = ProcessResult.coerce(
+            {
+                "dataframe": dataframe,
+                "errors": [
+                    {
+                        "message": "an error",
+                        "quickFixes": [
+                            {
+                                "text": "Hi",
+                                "action": "prependModule",
+                                "args": ["texttodate", {"column": "created_at"}],
+                            },
+                            (
+                                ("message.id", {}),
+                                "prependModule",
+                                "texttodate",
+                                {"column": "created_at"},
+                            ),
+                        ],
+                    },
+                    "other error",
+                ],
+                "json": {"foo": "bar"},
+            }
+        )
+        expected = ProcessResult(
+            dataframe,
+            errors=[
+                (atypes.I18nMessage.TODO_i18n("an error").to_dict(), quick_fixes),
+                (atypes.I18nMessage.TODO_i18n("other error").to_dict(), []),
+            ],
+            json={"foo": "bar"},
+        )
+        self.assertEqual(result, expected)
+
+    def test_coerce_dict_legacy_bad_quickfix_dict(self):
         with self.assertRaises(ValueError):
             ProcessResult.coerce(
                 {
@@ -741,7 +941,29 @@ class ProcessResultTests(unittest.TestCase):
                 }
             )
 
-    def test_coerce_dict_quickfix_dict_has_class_not_json(self):
+    def test_coerce_dict_bad_quickfix_dict(self):
+        with self.assertRaises(ValueError):
+            ProcessResult.coerce(
+                {
+                    "errors": [
+                        {
+                            "message": "an error",
+                            "quickFixes": [
+                                {
+                                    "text": "Hi",
+                                    "action": "prependModule",
+                                    "arguments": [
+                                        "texttodate",
+                                        {"column": "created_at"},
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+
+    def test_coerce_dict_legacy_quickfix_dict_has_class_not_json(self):
         with self.assertRaisesRegex(ValueError, "JSON serializable"):
             ProcessResult.coerce(
                 {
@@ -756,6 +978,28 @@ class ProcessResultTests(unittest.TestCase):
                             ],
                         }
                     ],
+                }
+            )
+
+    def test_coerce_dict_quickfix_dict_has_class_not_json(self):
+        with self.assertRaisesRegex(ValueError, "cannot be coerced"):
+            ProcessResult.coerce(
+                {
+                    "errors": [
+                        {
+                            "message": "an error",
+                            "quickFixes": [
+                                {
+                                    "text": "Hi",
+                                    "action": "prependModule",
+                                    "args": [
+                                        "texttodate",
+                                        {"columns": pd.Index(["created_at"])},
+                                    ],
+                                }
+                            ],
+                        }
+                    ]
                 }
             )
 

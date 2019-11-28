@@ -934,7 +934,7 @@ class ProcessResult:
                     raise ValueError(
                         (
                             "ProcessResult input must only contain {dataframe, "
-                            "error, json, quick_fixes, column_formats} keys"
+                            "error, errors, json, quick_fixes, column_formats} keys"
                         )
                     ) from err
         elif isinstance(value, tuple):
