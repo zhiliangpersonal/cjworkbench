@@ -718,6 +718,36 @@ class ProcessResultTests(unittest.TestCase):
         self.assertIsNotNone(result.errors)
         self.assertTrue(result.errors)
 
+    def test_coerce_dict_internationalized(self):
+        expected = ProcessResult(
+            errors=[
+                (
+                    atypes.I18nMessage.TODO_i18n("an error").to_dict(),
+                    [
+                        QuickFix(
+                            atypes.I18nMessage("message.id", {}).to_dict(),
+                            "prependModule",
+                            ["texttodate", {"column": "created_at"}],
+                        )
+                    ],
+                )
+            ]
+        )
+        result = ProcessResult.coerce(
+            {
+                "message": "an error",
+                "quickFixes": [
+                    (
+                        ("message.id", {}),
+                        "prependModule",
+                        "texttodate",
+                        {"column": "created_at"},
+                    )
+                ],
+            }
+        )
+        self.assertEqual(result, expected)
+
     def test_coerce_dict_legacy_with_quickfix_tuple(self):
         dataframe = pd.DataFrame({"A": [1, 2]})
         quick_fix = QuickFix(
