@@ -886,7 +886,7 @@ class ProcessResult:
             return cls(dataframe=value, columns=columns)
         elif isinstance(value, dict):
             if "message" in value and "quickFixes" in value:
-                return _coerce_to_process_result_error(value)
+                return cls(errors=_coerce_to_process_result_error(value))
             else:
                 value = dict(value)  # shallow copy
                 # Coerce quick_fixes and old-style error, if it's there
