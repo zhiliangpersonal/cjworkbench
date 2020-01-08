@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand
 from watchdog.events import RegexMatchingEventHandler
 from watchdog.observers import Observer
 from server.importmodulefromgithub import import_module_from_directory
+from cjwstate.modules.i18n.catalogs.update import extract_module_messages
 import cjwstate.modules
 
 
@@ -20,6 +21,13 @@ def main(directory):
     def reload():
         logger.info(f"Reloading...")
 
+        try:
+            logger.info(f"Extracting i18n messages...")
+            extract_module_messages(pathlib.Path(directory))
+        except Exception:
+            logger.exception("Error extracting module translations")
+            return
+
         with tempfile.TemporaryDirectory() as tmpdir:
             importdir = os.path.join(tmpdir, "importme")
             shutil.copytree(directory, importdir)
@@ -28,6 +36,7 @@ def main(directory):
             shutil.rmtree(os.path.join(importdir, "node_modules"), ignore_errors=True)
 
             try:
+                logger.info(f"Importing...")
                 import_module_from_directory(
                     "develop", pathlib.Path(importdir), force_reload=True
                 )
@@ -38,7 +47,7 @@ def main(directory):
         def on_any_event(self, ev):
             reload()
 
-    regexes = [".*\\.(py|json|yaml|html)"]
+    regexes = [r".*\.(py|json|yaml|html|po)"]
 
     event_handler = ReloadEventHandler(regexes=regexes)
     observer = Observer()
