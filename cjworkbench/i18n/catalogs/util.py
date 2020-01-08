@@ -2,6 +2,8 @@ from babel.messages.pofile import read_po, write_po
 from babel.messages.catalog import Catalog, Message
 from typing import Optional, FrozenSet, Union, Tuple
 import pathlib
+from icu import MessageFormat, ICUError, Locale
+
 
 MessageUID = Union[str, Tuple[str, str]]
 
@@ -171,3 +173,16 @@ def write_po_catalog(filename: Union[str, pathlib.Path], catalog: Catalog, **kwa
     # Write the file
     with open(filename, "wb") as catalog_file:
         write_po(catalog_file, catalog, **kwargs)
+
+
+def validate_icu_catalog(catalog: Catalog, locale_id: str):
+    """ Checks that all messages in a catalog conform to ICU syntax
+    """
+    for message in catalog:
+        if message.id:
+            try:
+                MessageFormat(message.string, Locale.createFromName(locale_id))
+            except ICUError as err:
+                raise ValueError(
+                    f"Invalid ICU format for message with id {message.id} in locale {locale_id}"
+                ) from err

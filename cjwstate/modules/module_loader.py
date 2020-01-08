@@ -6,17 +6,21 @@ Steps to loading a module:
     1. Find all the files. (deliverable: ModuleFiles instance)
     2. Load its spec. (deliverable: ModuleSpec instance)
     3. Load its Python code. (deliverable: cjwkernel.types.CompiledModule)
+    4. Load its i18n messages, if there are any. (deliverable: ModuleI18nMessages instance)
 """
 
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from pathlib import Path
 import jsonschema
 from typing import List, Optional, Set
 import yaml
+from cjworkbench.i18n import default_locale, is_supported
+from cjworkbench.i18n.catalogs.util import read_po_catalog, validate_icu_catalog
+from babel.messages.catalog import Catalog
 
 
 MODULE_ALLOWED_SECRETS = {
@@ -256,12 +260,34 @@ def _find_file(
         return None
 
 
+def _find_file_per_subdirectory(
+    dirpath: Path, extensions: Set[str], ignore_patterns: IgnorePatterns
+) -> Dict[str, Path]:
+    globbed = []
+    for extension in extensions:
+        globbed.extend(dirpath.glob("*/*." + extension))
+
+    paths = [p for p in globbed if not ignore_patterns.match(p)]
+    result = {}
+    for p in paths:
+        subdirectory = p.parent.name
+        if subdirectory in paths:
+            raise ValueError(
+                f'Multiple ".{extensions}" files detected for {subdirectory}. '
+                "Please delete the wrong one(s)."
+            )
+        else:
+            result[subdirectory] = p
+    return result
+
+
 @dataclass(frozen=True)
 class ModuleFiles:
     spec: Path
     code: Path
     html: Optional[Path] = None
     javascript: Optional[Path] = None
+    po: Optional[Dict[str, Path]] = None
 
     @classmethod
     def load_from_dirpath(cls, dirpath: Path) -> ModuleFiles:
@@ -271,12 +297,14 @@ class ModuleFiles:
         )
         IgnoreHtmlPatterns = IgnorePatterns([])
         IgnoreJavascriptPatterns = IgnorePatterns(["*.config.js"])
+        IgnorePoPatterns = IgnorePatterns([])
 
         # these throw ValueError
         code = _find_file(dirpath, {"py"}, IgnoreCodePatterns)
         spec = _find_file(dirpath, {"json", "yaml", "yml"}, IgnoreSpecPatterns)
         html = _find_file(dirpath, {"html"}, IgnoreHtmlPatterns)
         javascript = _find_file(dirpath, {"js"}, IgnoreJavascriptPatterns)
+        po = _find_file_per_subdirectory(dirpath / "locale", {"po"}, IgnorePoPatterns)
 
         if not spec:
             raise ValueError(
@@ -286,7 +314,7 @@ class ModuleFiles:
         if not code:
             raise ValueError('Missing ".py" module-code file. ' "Please write one.")
 
-        return cls(spec, code, html, javascript)
+        return cls(spec, code, html, javascript, po)
 
 
 class ModuleSpec:
@@ -369,3 +397,44 @@ class ModuleSpec:
 
         validate_module_spec(data)  # raises ValueError
         return ModuleSpec(**data)
+
+
+class ModuleI18nMessages:
+    """ Holds the messages of a module in all locales
+    """
+
+    def __init__(self, catalogs):
+        self.catalogs = catalogs
+
+    def get_message(self, message_id: str, locale_id: str) -> Optional[str]:
+        message = self.catalogs.get(locale_id, {}).get(message_id) or self.catalogs.get(
+            default_locale, {}
+        ).get(message_id)
+        return message.string if message else None
+
+    @classmethod
+    def load_from_paths(cls, paths: Dict[str, Path]) -> ModuleI18nMessages:
+        """ Parse from a dict which maps each locale id to a path.
+
+        Raise ValueError on syntax or semantic error.
+        """
+        if not paths:
+            return cls({})
+
+        if not default_locale in paths:
+            raise ValueError(f"You must provide a po file for {default_locale}")
+
+        catalogs = {}
+
+        for locale_id, path in paths.items():
+            if is_supported(locale_id):
+                try:
+                    catalog = read_po_catalog(path)
+                except Exception as err:
+                    raise ValueError(
+                        f"po file for {locale_id} failed to be parsed"
+                    ) from err
+                validate_icu_catalog(catalog, locale_id)
+                catalogs[locale_id] = catalog
+
+        return cls(catalogs)
